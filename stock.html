@@ -1,0 +1,796 @@
+<!DOCTYPE html>
+<html lang="zh-TW" data-theme="navy">
+<head>
+    <meta charset="UTF-8">
+    <title>ETF 成分股監控</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+
+        /* ══ THEMES ══════════════════════════════════════════ */
+        :root, [data-theme="navy"] {
+            --bg: #111e30; --s1: #182a42; --s2: #1c3050;
+            --bd: #274060; --bd2: #315070;
+            --text: #e2eaf4; --sub: #7a96b4; --sub2: #a8c0d8; --th: #8facc8;
+            --dd-bg: #122035; --shadow: rgba(0,0,0,0.65);
+        }
+        [data-theme="charcoal"] {
+            --bg: #171717; --s1: #202020; --s2: #282828;
+            --bd: #363636; --bd2: #464646;
+            --text: #e4e4e4; --sub: #8c8c8c; --sub2: #ababab; --th: #999;
+            --dd-bg: #1c1c1c; --shadow: rgba(0,0,0,0.7);
+        }
+        [data-theme="warm"] {
+            --bg: #1e1c19; --s1: #262420; --s2: #2e2c28;
+            --bd: #3d3a35; --bd2: #4e4a44;
+            --text: #ede8de; --sub: #9c9286; --sub2: #bdb19e; --th: #aaa090;
+            --dd-bg: #222019; --shadow: rgba(0,0,0,0.6);
+        }
+        [data-theme="teal"] {
+            --bg: #0d1e1e; --s1: #132828; --s2: #193232;
+            --bd: #234040; --bd2: #2d5050;
+            --text: #d6eeec; --sub: #6a9e9c; --sub2: #8ec4c2; --th: #7ab8b6;
+            --dd-bg: #102222; --shadow: rgba(0,0,0,0.65);
+        }
+        [data-theme="light"] {
+            --bg: #f0f2f5; --s1: #ffffff; --s2: #f4f6f9;
+            --bd: #dde3ec; --bd2: #c8d2e0;
+            --text: #1a2636; --sub: #5a7290; --sub2: #3d5570; --th: #5a7290;
+            --dd-bg: #ffffff; --shadow: rgba(0,0,0,0.14);
+            --up: #dc2626; --dn: #16a34a; --ac: #2563eb;
+            --ac-bg: rgba(37,99,235,0.09); --live: #059669;
+            --pre: #d97706; --post: #7c3aed;
+        }
+        :root {
+            --up: #ef4444; --dn: #22c55e;
+            --ac: #3b82f6; --ac-bg: rgba(59,130,246,0.10);
+            --pre: #f59e0b; --post: #a855f7; --live: #10b981;
+        }
+
+        /* ══ BASE ════════════════════════════════════════════ */
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'Inter',"Microsoft JhengHei",sans-serif; background: var(--bg); color: var(--text); font-size: 14px; min-height: 100vh; }
+        .wrap { max-width: 1300px; margin: 0 auto; background: var(--s1); min-height: 100vh; border-left: 1px solid var(--bd); border-right: 1px solid var(--bd); }
+
+        /* ══ TOPBAR ══════════════════════════════════════════ */
+        .topbar { display: flex; align-items: center; justify-content: space-between; height: 50px; padding: 0 20px; background: var(--s1); border-bottom: 1px solid var(--bd); position: sticky; top: 0; z-index: 100; }
+        .brand { display: flex; align-items: center; gap: 12px; }
+        .brand-badge { background: var(--ac); color: #fff; font-size: 10px; font-weight: 700; padding: 3px 9px; border-radius: 4px; letter-spacing: 1px; }
+        .brand-name { font-size: 15px; font-weight: 700; }
+        .brand-sub  { font-size: 11px; color: var(--sub); margin-top: 1px; }
+        .topbar-r { display: flex; align-items: center; gap: 12px; }
+        .topbar-time { font-size: 12px; color: var(--sub); }
+        .live-pill { display: flex; align-items: center; gap: 6px; color: var(--live); font-size: 11px; }
+        .live-pill::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--live); animation: blink 2s infinite; }
+
+        /* ── 主題切換器 ───── */
+        .theme-dd { position: relative; }
+        .theme-btn { display: flex; align-items: center; gap: 6px; height: 28px; padding: 0 10px; border: 1px solid var(--bd2); background: transparent; color: var(--sub); border-radius: 6px; cursor: pointer; font-size: 11px; font-weight: 500; font-family: inherit; transition: all .15s; outline: none; }
+        .theme-btn:hover { color: var(--text); background: rgba(128,128,128,0.05); }
+        .palette-dots { display: flex; gap: 3px; }
+        .theme-menu { display: none; position: absolute; top: calc(100% + 6px); right: 0; background: var(--dd-bg); border: 1px solid var(--bd2); border-radius: 9px; min-width: 200px; z-index: 400; overflow: hidden; box-shadow: 0 16px 40px var(--shadow); }
+        .theme-menu.open { display: block; }
+        .theme-opt { display: flex; align-items: center; gap: 11px; padding: 10px 14px; font-size: 13px; color: var(--sub); cursor: pointer; border: none; background: none; width: 100%; text-align: left; font-family: inherit; transition: background .1s, color .1s; }
+        .theme-opt:hover { background: rgba(128,128,128,0.06); color: var(--text); }
+        .theme-opt .swatch { width: 28px; height: 16px; border-radius: 4px; flex-shrink: 0; border: 1px solid rgba(128,128,128,0.2); }
+        .theme-check { margin-left: auto; color: var(--ac); font-size: 14px; }
+
+        /* ══ INDEX STRIP ═════════════════════════════════════ */
+        .idx-strip { display: flex; background: var(--s2); border-bottom: 1px solid var(--bd); overflow-x: auto; scrollbar-width: none; }
+        .idx-strip::-webkit-scrollbar { display: none; }
+        .idx-card { flex: 1; min-width: 105px; padding: 9px 14px; border-right: 1px solid var(--bd); transition: background .12s; }
+        .idx-card:last-child { border-right: none; }
+        .idx-card:hover { background: rgba(128,128,128,0.04); }
+        .idx-lbl { font-size: 10px; font-weight: 700; color: var(--sub); letter-spacing: .6px; text-transform: uppercase; margin-bottom: 4px; }
+        .idx-val  { font-family: 'JetBrains Mono',monospace; font-size: 16px; font-weight: 600; line-height: 1.2; }
+        .idx-chg  { font-family: 'JetBrains Mono',monospace; font-size: 12px; margin-top: 2px; }
+
+        /* ══ TOOLBAR ═════════════════════════════════════════ */
+        .toolbar { display: flex; align-items: center; justify-content: space-between; height: 42px; padding: 0 20px; background: var(--s1); border-bottom: 1px solid var(--bd); }
+        .tb-l { display: flex; align-items: center; gap: 6px; }
+        .tb-r { font-size: 12px; color: var(--sub); }
+        .tbtn { height: 28px; padding: 0 13px; border: 1px solid var(--bd2); background: transparent; color: var(--sub); border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: 500; font-family: inherit; display: flex; align-items: center; gap: 5px; transition: all .15s; outline: none; }
+        .tbtn:hover { background: rgba(128,128,128,0.05); color: var(--text); }
+        .tbtn.active    { background: rgba(34,197,94,.09); border-color: rgba(34,197,94,.3); color: var(--dn); }
+        .tbtn.region-on { background: var(--ac-bg); border-color: rgba(59,130,246,.35); color: var(--ac); }
+
+        /* ══ DROPDOWN ════════════════════════════════════════ */
+        .dd { position: relative; }
+        .dd-menu { display: none; position: absolute; top: calc(100% + 6px); left: 0; background: var(--dd-bg); border: 1px solid var(--bd2); border-radius: 8px; min-width: 210px; z-index: 300; overflow: hidden; box-shadow: 0 16px 40px var(--shadow); }
+        .dd-menu.open { display: block; }
+        .dd-item { display: flex; align-items: center; justify-content: space-between; padding: 9px 14px; font-size: 12.5px; color: var(--sub); cursor: pointer; border: none; background: none; width: 100%; text-align: left; font-family: inherit; transition: background .1s, color .1s; }
+        .dd-item:hover { background: rgba(128,128,128,0.06); color: var(--text); }
+        .dd-wt  { font-family: 'JetBrains Mono',monospace; font-size: 11px; color: var(--sub); }
+        .dd-div { height: 1px; background: var(--bd); margin: 3px 0; }
+
+        /* ══ TABLE ═══════════════════════════════════════════ */
+        .tbl-wrap { overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; }
+        thead tr { background: var(--s2); border-bottom: 2px solid var(--bd); }
+        th { padding: 10px 12px; font-size: 11px; font-weight: 700; color: var(--th); text-align: right; text-transform: uppercase; letter-spacing: .5px; white-space: nowrap; }
+        th:first-child { text-align: left; padding-left: 20px; }
+        tbody tr { border-bottom: 1px solid var(--bd); transition: background .1s; }
+        tbody tr:hover  { background: rgba(128,128,128,0.04); }
+        tbody tr.reg-hl { background: rgba(59,130,246,0.05); }
+        tbody tr.reg-hl:hover { background: rgba(59,130,246,0.09); }
+        td { padding: 10px 12px; text-align: right; vertical-align: middle; }
+        td:first-child { text-align: left; padding-left: 20px; }
+
+        .sc { display: flex; align-items: center; gap: 10px; }
+        .reg { font-family: 'JetBrains Mono',monospace; font-size: 10px; font-weight: 700; padding: 3px 6px; border-radius: 4px; min-width: 32px; text-align: center; flex-shrink: 0; }
+        .reg-TW { background: rgba(59,130,246,.15); color: #60a5fa; }
+        .reg-US { background: rgba(239,68,68,.14);  color: #f87171; }
+        .reg-JP { background: rgba(245,158,11,.14); color: #fbbf24; }
+        .reg-KR { background: rgba(34,197,94,.14);  color: #4ade80; }
+        .reg-DE { background: rgba(168,85,247,.14); color: #c084fc; }
+        .reg-FR { background: rgba(14,165,233,.14); color: #38bdf8; }
+        .reg-HK { background: rgba(249,115,22,.14); color: #fb923c; }
+        [data-theme="light"] .reg-TW { background: rgba(59,130,246,.12);  color: #2563eb; }
+        [data-theme="light"] .reg-US { background: rgba(220,38,38,.10);   color: #dc2626; }
+        [data-theme="light"] .reg-JP { background: rgba(217,119,6,.12);   color: #b45309; }
+        [data-theme="light"] .reg-KR { background: rgba(22,163,74,.12);   color: #16a34a; }
+        [data-theme="light"] .reg-DE { background: rgba(124,58,237,.12);  color: #7c3aed; }
+        [data-theme="light"] .reg-FR { background: rgba(2,132,199,.12);   color: #0284c7; }
+        [data-theme="light"] .reg-HK { background: rgba(234,88,12,.12);   color: #ea580c; }
+
+        .sc-info { position: relative; padding-left: 12px; min-width: 0; }
+        .sc-dot { position: absolute; left: 1px; top: 50%; transform: translateY(-50%); width: 6px; height: 6px; border-radius: 50%; }
+        .sc-dot.open { background: var(--live); animation: blink 2s infinite; }
+        .sc-dot.pre  { background: var(--pre);  animation: blink 2s infinite; }
+        .sc-dot.post { background: var(--post); animation: blink 2s infinite; }
+        .sc-name { font-size: 14px; font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 300px; line-height: 1.4; }
+        .sc-meta { display: flex; align-items: center; gap: 7px; margin-top: 2px; }
+        .sc-tick { font-family: 'JetBrains Mono',monospace; font-size: 11.5px; color: var(--sub2); }
+        .sc-status { font-size: 10px; font-weight: 600; padding: 1px 6px; border-radius: 3px; }
+        .sc-status.open { background: rgba(16,185,129,.12); color: var(--live); }
+        .sc-status.pre  { background: rgba(245,158,11,.12); color: var(--pre); }
+        .sc-status.post { background: rgba(168,85,247,.12); color: var(--post); }
+        [data-theme="light"] .sc-status.open { background: rgba(5,150,105,.10); }
+        [data-theme="light"] .sc-status.pre  { background: rgba(217,119,6,.10); }
+        [data-theme="light"] .sc-status.post { background: rgba(124,58,237,.10); }
+
+        @keyframes blink { 50% { opacity: .35; } }
+
+        .wc { display: flex; flex-direction: column; align-items: flex-end; gap: 1px; }
+        .wc-val { font-family: 'JetBrains Mono',monospace; font-size: 13px; color: var(--sub2); }
+        .wc-tag { font-family: 'JetBrains Mono',monospace; font-size: 9.5px; font-weight: 700; }
+        .wc-new { color: #a855f7; } .wc-up { color: var(--up); } .wc-dn { color: var(--dn); }
+
+        .pc-main { font-family: 'JetBrains Mono',monospace; font-size: 14px; font-weight: 600; color: var(--text); }
+        .pc-ext  { margin-top: 3px; font-family: 'JetBrains Mono',monospace; font-size: 10.5px; }
+        .pc-ext span { margin-left: 4px; }
+        .pc-ext span:first-child { margin-left: 0; }
+        .ext-b   { font-size: 9px; font-weight: 700; padding: 1px 4px; border-radius: 2px; }
+        .ext-b.pre  { background: rgba(245,158,11,.15); color: var(--pre); }
+        .ext-b.post { background: rgba(168,85,247,.15); color: var(--post); }
+
+        .num     { font-family: 'JetBrains Mono',monospace; font-size: 13px; font-weight: 500; }
+        .up      { color: var(--up) !important; }
+        .dn      { color: var(--dn) !important; }
+        .neutral { color: var(--sub2) !important; }
+        .spark-cell { display: flex; align-items: center; justify-content: flex-end; }
+
+        /* ══ ETF 績效 + 區域分布 BAR ════════════════════════════ */
+        .perf-bar {
+            display: flex; align-items: center; justify-content: space-between;
+            min-height: 44px; padding: 8px 20px;
+            background: var(--s2); border-bottom: 1px solid var(--bd);
+        }
+        .perf-col   { display: flex; flex-direction: column; gap: 5px; flex-shrink: 0; }
+        .perf-left  { display: flex; align-items: center; gap: 18px; }
+        .nav-row    { display: flex; align-items: center; gap: 10px; }
+        .nav-item   { display: flex; align-items: center; gap: 4px; }
+        .nav-label  { font-size: 10px; color: var(--sub); white-space: nowrap; }
+        .nav-val    { font-family: 'JetBrains Mono',monospace; font-size: 12px; font-weight: 600; color: var(--text); }
+        .nav-chg    { font-family: 'JetBrains Mono',monospace; font-size: 11px; font-weight: 600; }
+        .nav-chg.up { color: var(--up); } .nav-chg.dn { color: var(--dn); } .nav-chg.neutral { color: var(--sub); }
+        .nav-div    { width: 1px; height: 12px; background: var(--bd2); }
+        .rate-badge { font-size: 10px; color: var(--sub); font-family: 'JetBrains Mono',monospace; margin-left: 6px; }
+        .perf-label { font-size: 10px; font-weight: 700; color: var(--sub); text-transform: uppercase; letter-spacing: .6px; white-space: nowrap; }
+        .perf-item  { display: flex; align-items: center; gap: 6px; }
+        .perf-period{ font-size: 11px; color: var(--sub); white-space: nowrap; }
+        .perf-val   { font-family: 'JetBrains Mono',monospace; font-size: 14px; font-weight: 700; }
+        .perf-div   { width: 1px; height: 18px; background: var(--bd2); }
+        .region-dist { display: flex; align-items: flex-start; flex-wrap: wrap; gap: 5px; max-width: 56%; justify-content: flex-end; }
+        .rd-pill { display: flex; align-items: center; gap: 5px; padding: 3px 9px; border-radius: 6px; background: var(--s1); border: 1px solid var(--bd); white-space: nowrap; flex-shrink: 0; }
+        .rd-weight { font-size: 10px; color: var(--sub); margin-left: 2px; }
+        .rd-counts { display: flex; gap: 4px; font-family: 'JetBrains Mono',monospace; font-size: 11px; }
+        .rd-up   { color: var(--up); }
+        .rd-dn   { color: var(--dn); }
+        .rd-flat { color: var(--sub); }
+        .rd-contrib { font-family: 'JetBrains Mono',monospace; font-size: 12px; font-weight: 700; padding-left: 4px; border-left: 1px solid var(--bd); margin-left: 2px; }
+        .rd-contrib.up      { color: var(--up); }
+        .rd-contrib.dn      { color: var(--dn); }
+        .rd-contrib.neutral { color: var(--sub); }
+
+        /* ══ HEATMAP ═════════════════════════════════════════ */
+        .heatmap-wrap { display: none; position: relative; overflow: hidden; }
+        .heatmap-wrap.visible { display: block; }
+        .hm-block { position: absolute; box-sizing: border-box; display: flex; flex-direction: column;
+                    justify-content: space-between; padding: 8px 10px; overflow: hidden;
+                    border-radius: 4px; cursor: default; transition: filter .12s; border: 2px solid rgba(0,0,0,0.25); }
+        .hm-block:hover { filter: brightness(1.18); z-index: 2; }
+        .hm-name { font-size: 11px; font-weight: 600; color: rgba(255,255,255,0.92); line-height: 1.25; overflow: hidden; }
+        .hm-ticker { font-size: 10px; color: rgba(255,255,255,0.55); }
+        .hm-chg  { font-family: 'JetBrains Mono',monospace; font-weight: 700; color: rgba(255,255,255,0.95); }
+        .hm-w    { font-size: 10px; color: rgba(255,255,255,0.5); }
+        .tbtn.hm-on { background: rgba(139,92,246,.12); border-color: rgba(139,92,246,.4); color: #a78bfa; }
+
+        /* ══ STATUS BAR ══════════════════════════════════════ */
+        .statusbar { display: flex; align-items: center; justify-content: space-between; height: 32px; padding: 0 20px; background: var(--s1); border-top: 1px solid var(--bd); font-size: 10.5px; color: var(--sub); }
+        .legend { display: flex; align-items: center; gap: 16px; }
+        .leg { display: flex; align-items: center; gap: 5px; }
+        .leg-dot { width: 6px; height: 6px; border-radius: 50%; }
+
+        ::-webkit-scrollbar { width: 4px; height: 4px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: var(--bd2); border-radius: 2px; }
+
+        /* ══ ETF TOGGLE ══════════════════════════════════════ */
+        .etf-toggle { display: flex; align-items: center; gap: 2px; background: var(--s2); border: 1px solid var(--bd2); border-radius: 8px; padding: 2px; }
+        .etf-btn { height: 24px; padding: 0 12px; border: none; background: transparent; color: var(--sub); border-radius: 6px; cursor: pointer; font-size: 11px; font-weight: 700; font-family: inherit; transition: all .15s; letter-spacing: .5px; outline: none; }
+        .etf-btn:hover { color: var(--text); }
+        .etf-btn.active { background: var(--ac); color: #fff; }
+    </style>
+</head>
+<body>
+<div class="wrap">
+
+    <div class="topbar">
+        <div class="brand">
+            <span class="brand-badge">ETF</span>
+            <div>
+                <div class="brand-name" id="brand-name">00988A 成分股監控</div>
+                <div class="brand-sub" id="brand-sub">全球 AI 科技 ETF · 即時追蹤</div>
+            </div>
+        </div>
+        <div class="topbar-r">
+            <div class="etf-toggle">
+                <button class="etf-btn active" id="btn-988" onclick="switchEtf('00988A')">00988A</button>
+                <button class="etf-btn"        id="btn-990" onclick="switchEtf('00990A')">00990A</button>
+            </div>
+            <span class="topbar-time" id="last-update">--</span>
+            <div class="theme-dd">
+                <button class="theme-btn" onclick="toggleThemeMenu()" title="切換主題">
+                    <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="6.5"/><path d="M8 1.5v13M1.5 8h13M3.5 3.5l9 9M12.5 3.5l-9 9"/></svg>
+                    <div class="palette-dots" id="palette-dots"></div>
+                    <svg width="8" height="5" viewBox="0 0 8 5" fill="none"><path d="M1 1L4 4L7 1" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+                </button>
+                <div id="theme-menu" class="theme-menu">
+                    <button class="theme-opt" onclick="setTheme('navy')">    <span class="swatch" style="background:linear-gradient(135deg,#182a42,#1c3050)"></span>深海軍藍<span class="theme-check" id="chk-navy">✓</span></button>
+                    <button class="theme-opt" onclick="setTheme('charcoal')"><span class="swatch" style="background:linear-gradient(135deg,#202020,#282828)"></span>深灰 Charcoal<span class="theme-check" id="chk-charcoal" style="display:none">✓</span></button>
+                    <button class="theme-opt" onclick="setTheme('warm')">    <span class="swatch" style="background:linear-gradient(135deg,#262420,#2e2c28)"></span>暖灰棕 Warm<span class="theme-check" id="chk-warm" style="display:none">✓</span></button>
+                    <button class="theme-opt" onclick="setTheme('teal')">    <span class="swatch" style="background:linear-gradient(135deg,#132828,#193232)"></span>深墨綠 Teal<span class="theme-check" id="chk-teal" style="display:none">✓</span></button>
+                    <button class="theme-opt" onclick="setTheme('light')">   <span class="swatch" style="background:linear-gradient(135deg,#fff,#f0f2f5);border:1px solid #dde3ec"></span>淺色 Light<span class="theme-check" id="chk-light" style="display:none">✓</span></button>
+                </div>
+            </div>
+            <span class="live-pill">即時更新中</span>
+        </div>
+    </div>
+
+    <div id="indices-bar" class="idx-strip">
+        <div class="idx-card"><div class="idx-lbl">讀取中...</div></div>
+    </div>
+
+    <!-- 功能一：ETF 加權績效 + 區域分布 -->
+    <div class="perf-bar">
+        <div class="perf-col">
+            <div class="perf-left">
+                <span class="perf-label">ETF 加權績效</span>
+                <div class="perf-item">
+                    <span class="perf-period">今日</span>
+                    <span class="perf-val neutral" id="perf-day">--</span>
+                </div>
+                <div class="perf-div"></div>
+                <div class="perf-item">
+                    <span class="perf-period">本週</span>
+                    <span class="perf-val neutral" id="perf-1w">--</span>
+                </div>
+                <div class="perf-div"></div>
+                <div class="perf-item">
+                    <span class="perf-period">本月</span>
+                    <span class="perf-val neutral" id="perf-1m">--</span>
+                </div>
+            </div>
+            <div class="nav-row" id="nav-row">
+                <div class="nav-item">
+                    <span class="nav-label">預估淨值</span>
+                    <span class="nav-val" id="nav-est">--</span>
+                    <span class="nav-chg neutral" id="nav-est-chg">--</span>
+                </div>
+                <div class="nav-div"></div>
+                <div class="nav-item">
+                    <span class="nav-label">市價</span>
+                    <span class="nav-val" id="nav-price">--</span>
+                    <span class="nav-chg neutral" id="nav-price-chg">--</span>
+                </div>
+                <div class="nav-div"></div>
+                <div class="nav-item">
+                    <span class="nav-label">折溢價</span>
+                    <span class="nav-chg neutral" id="nav-premium">--</span>
+                </div>
+                <div class="nav-div"></div>
+                <div class="nav-item">
+                    <span class="nav-label">資料時間</span>
+                    <span class="nav-val" id="nav-update-time" style="font-size:10px;color:var(--sub)">--</span>
+                </div>
+                <span class="rate-badge" id="usd-rate"></span>
+            </div>
+        </div>
+        <div class="region-dist" id="region-dist"></div>
+    </div>
+
+    <div class="toolbar">
+        <div class="tb-l">
+            <div class="dd">
+                <button id="region-btn" class="tbtn" onclick="toggleDropdown()">
+                    <span id="region-label">🌍 全部區域</span>
+                    <svg width="8" height="5" viewBox="0 0 8 5" fill="none"><path d="M1 1L4 4L7 1" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+                </button>
+                <div id="region-dropdown" class="dd-menu">
+                    <button class="dd-item" onclick="selectRegion('ALL')">🌍 全部顯示</button>
+                    <div class="dd-div"></div>
+                    <button class="dd-item" onclick="selectRegion('TW')"><span>🇹🇼 台灣市場</span><span id="w-TW" class="dd-wt">--%</span></button>
+                    <button class="dd-item" onclick="selectRegion('US')"><span>🇺🇸 美國市場</span><span id="w-US" class="dd-wt">--%</span></button>
+                    <button class="dd-item" onclick="selectRegion('JP')"><span>🇯🇵 日本市場</span><span id="w-JP" class="dd-wt">--%</span></button>
+                    <button class="dd-item" onclick="selectRegion('KR')"><span>🇰🇷 韓國市場</span><span id="w-KR" class="dd-wt">--%</span></button>
+                    <button class="dd-item" onclick="selectRegion('DE')"><span>🇩🇪 德國市場</span><span id="w-DE" class="dd-wt">--%</span></button>
+                    <button class="dd-item" onclick="selectRegion('FR')"><span>🇫🇷 法國市場</span><span id="w-FR" class="dd-wt">--%</span></button>
+                    <button class="dd-item" onclick="selectRegion('HK')"><span>🇭🇰 香港市場</span><span id="w-HK" class="dd-wt">--%</span></button>
+                </div>
+            </div>
+            <button id="toggle-filter" class="tbtn" onclick="toggleMode()">
+                <svg width="10" height="10" viewBox="0 0 10 10" fill="currentColor"><circle cx="5" cy="5" r="3.5"/></svg>
+                聚焦開盤市場
+            </button>
+            <button id="heatmap-btn" class="tbtn" onclick="toggleHeatmap()">
+                <svg width="11" height="11" viewBox="0 0 11 11" fill="currentColor"><rect x="0" y="0" width="5" height="5" rx="1"/><rect x="6" y="0" width="5" height="5" rx="1"/><rect x="0" y="6" width="5" height="5" rx="1"/><rect x="6" y="6" width="5" height="5" rx="1"/></svg>
+                熱力圖
+            </button>
+        </div>
+        <div class="tb-r" id="stock-count">-- 支成分股</div>
+    </div>
+
+    <div class="tbl-wrap">
+        <table>
+            <thead>
+                <tr>
+                    <th style="width:30%">成分股</th>
+                    <th style="width:8%">權重</th>
+                    <th style="width:13%">最新價格</th>
+                    <th style="width:10%">今日</th>
+                    <th style="width:9%">3日</th>
+                    <th style="width:9%">1週</th>
+                    <th style="width:9%">1月</th>
+                    <th style="width:7%; text-align:right; padding-right:20px">走勢</th>
+                </tr>
+            </thead>
+            <tbody id="stock-list">
+                <tr><td colspan="8" style="text-align:center;padding:30px;color:var(--sub);font-size:13px">資料讀取中…</td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div class="heatmap-wrap" id="heatmap-wrap"></div>
+
+    <div class="statusbar">
+        <span>股票每 20 秒更新 · 指數每 15 秒更新</span>
+        <div class="legend">
+            <div class="leg"><div class="leg-dot" style="background:var(--live)"></div>開盤中</div>
+            <div class="leg"><div class="leg-dot" style="background:var(--pre)"></div>盤前</div>
+            <div class="leg"><div class="leg-dot" style="background:var(--post)"></div>盤後</div>
+            <div class="leg"><div class="leg-dot" style="background:var(--up)"></div>上漲</div>
+            <div class="leg"><div class="leg-dot" style="background:var(--dn)"></div>下跌</div>
+        </div>
+    </div>
+
+</div>
+
+<script>
+    const THEMES = {
+        navy:     { dots: ['#182a42','#274060','#3b82f6'] },
+        charcoal: { dots: ['#202020','#383838','#888888'] },
+        warm:     { dots: ['#262420','#3d3a35','#9c9286'] },
+        teal:     { dots: ['#132828','#234040','#6a9e9c'] },
+        light:    { dots: ['#ffffff','#dde3ec','#2563eb'] },
+    };
+    let currentTheme = localStorage.getItem('etf-theme') || 'navy';
+
+    function setTheme(t) {
+        currentTheme = t;
+        document.documentElement.setAttribute('data-theme', t);
+        localStorage.setItem('etf-theme', t);
+        Object.keys(THEMES).forEach(k => {
+            document.getElementById('chk-' + k).style.display = k === t ? '' : 'none';
+        });
+        updatePaletteDots();
+        document.getElementById('theme-menu').classList.remove('open');
+    }
+    function updatePaletteDots() {
+        document.getElementById('palette-dots').innerHTML =
+            THEMES[currentTheme].dots.map(c =>
+                `<span style="background:${c};width:7px;height:7px;border-radius:50%;display:inline-block"></span>`
+            ).join('');
+    }
+    function toggleThemeMenu() { document.getElementById('theme-menu').classList.toggle('open'); }
+    setTheme(currentTheme);
+
+    let rawData = [];
+    let isFiltered = false;
+    let currentRegion = 'ALL';
+    let hmActive = false;
+    const regionNames = { ALL:'全部區域', TW:'台灣', US:'美國', JP:'日本', KR:'韓國', DE:'德國', FR:'法國', HK:'香港' };
+    const regionFlags = { ALL:'🌍', TW:'🇹🇼', US:'🇺🇸', JP:'🇯🇵', KR:'🇰🇷', DE:'🇩🇪', FR:'🇫🇷', HK:'🇭🇰' };
+    const API = 'http://127.0.0.1:5000/api';
+
+    const ETF_META = {
+        '00988A': { name: '00988A 成分股監控', sub: '全球 AI 科技 ETF · 即時追蹤' },
+        '00990A': { name: '00990A 成分股監控', sub: '元大全球 AI 晶片 ETF · 即時追蹤' },
+    };
+    let currentEtf = localStorage.getItem('etf-current') || '00988A';
+
+    function switchEtf(etf) {
+        if (etf === currentEtf) return;
+        currentEtf = etf;
+        localStorage.setItem('etf-current', etf);
+        document.getElementById('btn-988').classList.toggle('active', etf === '00988A');
+        document.getElementById('btn-990').classList.toggle('active', etf === '00990A');
+        const m = ETF_META[etf];
+        document.getElementById('brand-name').textContent = m.name;
+        document.getElementById('brand-sub').textContent  = m.sub;
+        rawData = [];
+        document.getElementById('stock-list').innerHTML =
+            '<tr><td colspan="8" style="text-align:center;padding:30px;color:var(--sub);font-size:13px">切換中…</td></tr>';
+        fetchStocks();
+        fetchNavData();
+    }
+
+    // Restore ETF on page load
+    (function() {
+        if (currentEtf === '00990A') {
+            document.getElementById('btn-988').classList.remove('active');
+            document.getElementById('btn-990').classList.add('active');
+            const m = ETF_META['00990A'];
+            document.getElementById('brand-name').textContent = m.name;
+            document.getElementById('brand-sub').textContent  = m.sub;
+        }
+    })();
+
+    function toggleDropdown() { document.getElementById('region-dropdown').classList.toggle('open'); }
+    function selectRegion(reg) {
+        currentRegion = reg;
+        document.getElementById('region-label').textContent = `${regionFlags[reg]} ${regionNames[reg]}`;
+        document.getElementById('region-btn').classList.toggle('region-on', reg !== 'ALL');
+        document.getElementById('region-dropdown').classList.remove('open');
+        renderTable();
+    }
+    window.addEventListener('click', e => {
+        if (!e.target.closest('.dd'))       document.querySelectorAll('.dd-menu').forEach(m => m.classList.remove('open'));
+        if (!e.target.closest('.theme-dd')) document.querySelectorAll('.theme-menu').forEach(m => m.classList.remove('open'));
+    });
+
+    async function updateIndices() {
+        try {
+            const data = await fetch(`${API}/indices`).then(r => r.json());
+            if (!data || !data.some(i => i.price > 0)) return;
+            document.getElementById('indices-bar').innerHTML = data.map(idx => {
+                const ok = idx.price > 0, up = idx.change_pts > 0, dn = idx.change_pts < 0;
+                const s = up ? '+' : '';
+                return `<div class="idx-card">
+                    <div class="idx-lbl">${idx.name}</div>
+                    <div class="idx-val">${ok ? idx.price.toLocaleString(undefined,{maximumFractionDigits:0}) : '--'}</div>
+                    <div class="idx-chg ${up?'up':dn?'dn':'neutral'}">${ok?`${s}${idx.change_pts.toFixed(0)} (${s}${idx.change_pct.toFixed(2)}%)`:'--'}</div>
+                </div>`;
+            }).join('');
+        } catch(e) { console.error('指數更新失敗', e); }
+    }
+
+    /* ── 功能一：ETF 加權績效 + 漲跌分布 ──────── */
+    function updatePerfBar(data) {
+        const valid = data.filter(s => s.price > 0);
+        let wDay = 0, w1w = 0, w1m = 0, totalW = 0;
+        valid.forEach(s => {
+            const w = parseFloat(s.weight) || 0;
+            totalW += w;
+            if (s.day_change  != null && !isNaN(s.day_change))  wDay += w * s.day_change;
+            if (s.change_1w   != null && !isNaN(s.change_1w))   w1w  += w * s.change_1w;
+            if (s.change_1m   != null && !isNaN(s.change_1m))   w1m  += w * s.change_1m;
+        });
+        if (totalW > 0) { wDay /= totalW; w1w /= totalW; w1m /= totalW; }
+
+        const setVal = (id, v) => {
+            const el = document.getElementById(id);
+            el.textContent = fmt(v);
+            el.className = 'perf-val ' + gc(v);
+        };
+        setVal('perf-day', wDay);
+        setVal('perf-1w',  w1w);
+        setVal('perf-1m',  w1m);
+
+        const regions = {};
+        valid.forEach(s => {
+            const r = s.region || 'US';
+            if (!regions[r]) regions[r] = { up: 0, dn: 0, flat: 0, contrib: 0, regionW: 0 };
+            const w = parseFloat(s.weight) || 0;
+            regions[r].regionW += w;
+            if (s.day_change > 0.0001)       regions[r].up++;
+            else if (s.day_change < -0.0001) regions[r].dn++;
+            else                             regions[r].flat++;
+            if (s.day_change != null && !isNaN(s.day_change))
+                regions[r].contrib += w * s.day_change;
+        });
+        if (totalW > 0) Object.keys(regions).forEach(r => { regions[r].contrib /= totalW; });
+
+        const ORDER = ['US','TW','JP','KR','DE','FR','HK'];
+        const sorted = Object.keys(regions).sort((a, b) => {
+            const ia = ORDER.indexOf(a), ib = ORDER.indexOf(b);
+            if (ia === -1 && ib === -1) return 0;
+            if (ia === -1) return 1;
+            if (ib === -1) return -1;
+            return ia - ib;
+        });
+
+        document.getElementById('region-dist').innerHTML = sorted.map(r => {
+            const d = regions[r];
+            const cls = gc(d.contrib);
+            const flatHtml = d.flat > 0 ? `<span class="rd-flat">─${d.flat}</span>` : '';
+            return `<div class="rd-pill">
+                <span class="reg reg-${r}">${r}</span><span class="rd-weight">${d.regionW.toFixed(1)}%</span>
+                <span class="rd-counts">
+                    <span class="rd-up">▲${d.up}</span>
+                    ${flatHtml}
+                    <span class="rd-dn">▼${d.dn}</span>
+                </span>
+                <span class="rd-contrib ${cls}">${fmt(d.contrib)}</span>
+            </div>`;
+        }).join('');
+    }
+
+    async function fetchStocks() {
+        try {
+            const data = await fetch(`${API}/stocks?etf=${currentEtf}`).then(r => r.json());
+            if (data && data.length > 0 && data.some(s => s.price > 0)) {
+                rawData = data;
+                updatePerfBar(data);
+                renderTable();
+                if (hmActive) renderHeatmap();
+                document.getElementById('last-update').textContent =
+                    '更新 ' + new Date().toLocaleTimeString('zh-TW',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+            }
+        } catch(e) { console.error('股票更新失敗', e); }
+    }
+
+    function toggleMode() {
+        isFiltered = !isFiltered;
+        document.getElementById('toggle-filter').classList.toggle('active');
+        renderTable();
+    }
+
+    function hmColor(chg) {
+        if (chg == null || isNaN(chg)) return 'rgba(128,128,128,0.12)';
+        const intensity = Math.min(Math.abs(chg) / 10, 1);
+        const alpha = 0.25 + intensity * 0.55;
+        if (chg >  0.0001) return `rgba(220,38,38,${alpha.toFixed(2)})`;
+        if (chg < -0.0001) return `rgba(22,163,74,${alpha.toFixed(2)})`;
+        return 'rgba(128,128,128,0.15)';
+    }
+
+    // Squarified Treemap 算法：讓方塊面積正比於持股權重，填滿整個矩形
+    function squarifiedTreemap(weights, W, H) {
+        const total = weights.reduce((a, b) => a + b, 0);
+        const areas = weights.map(w => w / total * W * H);
+        const rects = [];
+
+        function worst(row, side) {
+            const s = row.reduce((a, b) => a + b, 0);
+            const mx = Math.max(...row), mn = Math.min(...row);
+            return Math.max(side * side * mx / (s * s), s * s / (side * side * mn));
+        }
+
+        function layoutRow(row, x, y, w, h) {
+            const s = row.reduce((a, b) => a + b, 0);
+            const isH = w >= h;
+            const thick = s / (isH ? w : h);
+            let off = isH ? x : y;
+            row.forEach(a => {
+                const len = a / thick;
+                rects.push(isH ? { x: off, y, w: len, h: thick }
+                                : { x, y: off, w: thick, h: len });
+                off += len;
+            });
+            return isH ? { x, y: y + thick, w, h: h - thick }
+                       : { x: x + thick, y, w: w - thick, h };
+        }
+
+        function squarify(rem, x, y, w, h, row) {
+            if (w < 0.5 || h < 0.5) return;
+            if (rem.length === 0) { if (row.length) layoutRow(row, x, y, w, h); return; }
+            const side = Math.max(w, h);
+            if (row.length === 0 || worst(row, side) >= worst([...row, rem[0]], side)) {
+                squarify(rem.slice(1), x, y, w, h, [...row, rem[0]]);
+            } else {
+                const next = layoutRow(row, x, y, w, h);
+                squarify(rem, next.x, next.y, next.w, next.h, []);
+            }
+        }
+
+        squarify(areas, 0, 0, W, H, []);
+        return rects;
+    }
+
+    function renderHeatmap() {
+        const container = document.getElementById('heatmap-wrap');
+        const W = container.clientWidth;
+        const H = Math.round(Math.min(W * 0.56, window.innerHeight * 0.68));
+        container.style.height = H + 'px';
+
+        const data = [...rawData]
+            .filter(s => parseFloat(s.weight) > 0)
+            .sort((a, b) => parseFloat(b.weight) - parseFloat(a.weight));
+        const weights = data.map(s => parseFloat(s.weight) || 0);
+        const rects   = squarifiedTreemap(weights, W, H);
+
+        container.innerHTML = data.map((s, i) => {
+            const r = rects[i];
+            if (!r) return '';
+            const GAP = 2;
+            const bw = r.w - GAP, bh = r.h - GAP;
+            const chgSize  = bh < 70 ? '11px' : bh < 100 ? '12px' : '15px';
+            const nameSize = bh < 70 ? '9px'  : bh < 100 ? '10px' : '11px';
+            const maxChars = Math.floor(bw / 7);
+            const name = s.name.length > maxChars ? s.name.slice(0, maxChars - 1) + '…' : s.name;
+            const showTicker = bh >= 60;
+            const showWeight = bh >= 80;
+            return `<div class="hm-block" style="left:${(r.x+GAP/2).toFixed(1)}px;top:${(r.y+GAP/2).toFixed(1)}px;width:${bw.toFixed(1)}px;height:${bh.toFixed(1)}px;background:${hmColor(s.day_change)}">
+                <div>
+                    <div class="hm-name" style="font-size:${nameSize}">${name}</div>
+                    ${showTicker ? `<div class="hm-ticker">${s.id}</div>` : ''}
+                </div>
+                <div>
+                    <div class="hm-chg" style="font-size:${chgSize}">${fmt(s.day_change)}</div>
+                    ${showWeight ? `<div class="hm-w">${s.weight}</div>` : ''}
+                </div>
+            </div>`;
+        }).join('');
+    }
+
+    function toggleHeatmap() {
+        hmActive = !hmActive;
+        document.getElementById('heatmap-btn').classList.toggle('hm-on', hmActive);
+        document.querySelector('.tbl-wrap').style.display = hmActive ? 'none' : '';
+        const wrap = document.getElementById('heatmap-wrap');
+        if (hmActive) { wrap.classList.add('visible'); renderHeatmap(); }
+        else          { wrap.classList.remove('visible'); }
+    }
+
+    function renderTable() {
+        const tbody = document.getElementById('stock-list');
+        const data  = [...rawData];
+
+        const sum = { TW:0, US:0, JP:0, KR:0, DE:0, FR:0, HK:0 };
+        rawData.forEach(s => { if (s.region in sum) sum[s.region] += parseFloat(s.weight) || 0; });
+        Object.keys(sum).forEach(r => {
+            const el = document.getElementById(`w-${r}`);
+            if (el) el.textContent = sum[r].toFixed(2) + '%';
+        });
+
+        data.sort((a, b) => {
+            if (currentRegion !== 'ALL') {
+                const aR = a.region === currentRegion, bR = b.region === currentRegion;
+                if (aR !== bR) return aR ? -1 : 1;
+            }
+            if (isFiltered && a.is_open !== b.is_open) return a.is_open ? -1 : 1;
+            return parseFloat(b.weight) - parseFloat(a.weight);
+        });
+
+        document.getElementById('stock-count').textContent = `${currentEtf} · ${data.length} 支成分股`;
+
+        tbody.innerHTML = data.map(s => {
+            const hasP = s.price > 0;
+            const hl   = currentRegion !== 'ALL' && s.region === currentRegion;
+            const dot  = s.session === 'pre'  ? '<span class="sc-dot pre"></span>'  :
+                         s.session === 'post' ? '<span class="sc-dot post"></span>' :
+                         s.is_open            ? '<span class="sc-dot open"></span>' : '';
+            const badge = s.session === 'pre'  ? '<span class="sc-status pre">盤前</span>'   :
+                          s.session === 'post' ? '<span class="sc-status post">盤後</span>'  :
+                          s.is_open            ? '<span class="sc-status open">開盤中</span>': '';
+            return `<tr class="${hl ? 'reg-hl' : ''}">
+                <td><div class="sc">
+                    <span class="reg reg-${s.region||'US'}">${s.region||'?'}</span>
+                    <div class="sc-info">${dot}
+                        <div class="sc-name">${s.name}</div>
+                        <div class="sc-meta"><span class="sc-tick">${s.id}</span>${badge}</div>
+                    </div>
+                </div></td>
+                <td><div class="wc"><span class="wc-val">${s.weight}</span>${fmtWC(s.weight_change)}</div></td>
+                <td>
+                    <div class="pc-main">${hasP ? s.price.toLocaleString(undefined,{minimumFractionDigits:2}) : '--'}</div>
+                    ${fmtExt(s.session, s.ext_price, s.ext_change)}
+                </td>
+                <td class="num ${gc(s.day_change)}">${fmt(s.day_change)}</td>
+                <td class="num ${gc(s.change_3d)}">${fmt(s.change_3d)}</td>
+                <td class="num ${gc(s.change_1w)}">${fmt(s.change_1w)}</td>
+                <td class="num ${gc(s.change_1m)}">${fmt(s.change_1m)}</td>
+                <td><div class="spark-cell">${makeSpark(s)}</div></td>
+            </tr>`;
+        }).join('');
+    }
+
+    const gc  = v => v >  0.0001 ? 'up' : v < -0.0001 ? 'dn' : 'neutral';
+    const fmt = v => (v == null || isNaN(v)) ? '--' : (v > 0 ? '+' : '') + v.toFixed(2) + '%';
+
+    /* ── 功能二：Sparkline ───────────────────── */
+    function makeSpark(s) {
+        const toP = chg => (chg != null && !isNaN(chg)) ? 100 / (1 + chg / 100) : null;
+        const pts = [ toP(s.change_1m), toP(s.change_1w), toP(s.change_3d), toP(s.day_change), 100 ];
+        const valid = pts.filter(p => p != null);
+        if (valid.length < 2) return '<svg width="52" height="20"></svg>';
+        const W = 52, H = 20, PAD = 2;
+        const min = Math.min(...valid), max = Math.max(...valid), range = max - min || 1;
+        const coords = pts.map((p, i) => {
+            if (p == null) return null;
+            const x = (i / (pts.length - 1)) * W;
+            const y = PAD + (H - PAD * 2) * (1 - (p - min) / range);
+            return x.toFixed(1) + ',' + y.toFixed(1);
+        }).filter(Boolean).join(' ');
+        const stroke = s.day_change > 0.0001 ? 'var(--up)' : s.day_change < -0.0001 ? 'var(--dn)' : 'var(--sub)';
+        return `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}"><polyline points="${coords}" fill="none" stroke="${stroke}" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"/></svg>`;
+    }
+
+    function fmtExt(session, extP, extC) {
+        if (!extP) return '';
+        if (session !== 'pre' && session !== 'post' && session !== 'closed') return '';
+        const lbl = session === 'pre' ? '盤前' : '盤後';
+        const cls = session === 'closed' ? 'post' : session;  // 夜間閉市仍用盤後樣式
+        const cc  = extC > 0.0001 ? 'var(--up)' : extC < -0.0001 ? 'var(--dn)' : 'var(--sub)';
+        const pct = extC != null ? `<span style="color:${cc}">${extC>0?'+':''}${extC.toFixed(2)}%</span>` : '';
+        return `<div class="pc-ext"><span class="ext-b ${cls}">${lbl}</span><span style="color:var(--text)">${extP.toLocaleString(undefined,{minimumFractionDigits:2})}</span>${pct}</div>`;
+    }
+
+    function fmtWC(wc) {
+        if (wc == null) return '';
+        if (wc === 'new') return '<div class="wc-tag wc-new">NEW</div>';
+        if (wc > 0) return `<div class="wc-tag wc-up">▲+${wc.toFixed(2)}</div>`;
+        if (wc < 0) return `<div class="wc-tag wc-dn">▼${wc.toFixed(2)}</div>`;
+        return '';
+    }
+
+    async function fetchNavData() {
+        try {
+            const d = await fetch(`${API}/etf_nav?etf=${currentEtf}`).then(r => r.json());
+            if (d.error) return;
+
+            const setNav = (id, val, chgId, chg) => {
+                document.getElementById(id).textContent = val != null ? val.toFixed(2) : '--';
+                const el = document.getElementById(chgId);
+                if (chg != null) {
+                    el.textContent = (chg > 0 ? '+' : '') + chg.toFixed(2) + '%';
+                    el.className = 'nav-chg ' + (chg > 0.01 ? 'up' : chg < -0.01 ? 'dn' : 'neutral');
+                }
+            };
+            setNav('nav-est',   d.est_nav,      'nav-est-chg',   d.nav_chg_pct);
+            setNav('nav-price', d.market_price, 'nav-price-chg', d.market_chg_pct);
+
+            const pEl = document.getElementById('nav-premium');
+            if (d.premium_pct != null) {
+                pEl.textContent = (d.premium_pct > 0 ? '+' : '') + d.premium_pct.toFixed(2) + '%';
+                pEl.className = 'nav-chg ' + (d.premium_pct > 0.01 ? 'up' : d.premium_pct < -0.01 ? 'dn' : 'neutral');
+            }
+
+            if (d.usd_twd) {
+                document.getElementById('usd-rate').textContent = `1 USD = ${d.usd_twd.toFixed(3)} TWD`;
+            }
+            if (d.update_time) {
+                document.getElementById('nav-update-time').textContent = d.update_time;
+            }
+        } catch(e) { console.error('NAV 更新失敗', e); }
+    }
+
+    updateIndices();
+    fetchStocks();
+    fetchNavData();
+    setInterval(updateIndices, 15000);
+    setInterval(fetchStocks,  20000);
+    setInterval(fetchNavData, 15000);
+</script>
+</body>
+</html>

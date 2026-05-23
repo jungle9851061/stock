@@ -1,0 +1,182 @@
+[
+  {
+    "id": "LITE",
+    "name": "Lumentum Holdings Inc",
+    "weight": "5.71%"
+  },
+  {
+    "id": "SNDK",
+    "name": "Sandisk Corp/DE",
+    "weight": "5.54%"
+  },
+  {
+    "id": "MU",
+    "name": "Micron Technology Inc",
+    "weight": "5.44%"
+  },
+  {
+    "id": "285A.T",
+    "name": "Kioxia Holdings Corp",
+    "weight": "3.99%"
+  },
+  {
+    "id": "2308.TW",
+    "name": "台達電",
+    "weight": "3.93%"
+  },
+  {
+    "id": "TSEM",
+    "name": "Tower Semiconductor Ltd",
+    "weight": "3.85%"
+  },
+  {
+    "id": "BE",
+    "name": "Bloom Energy Corp",
+    "weight": "3.71%"
+  },
+  {
+    "id": "2330.TW",
+    "name": "台積電",
+    "weight": "3.65%"
+  },
+  {
+    "id": "AMD",
+    "name": "Advanced Micro Devices Inc",
+    "weight": "3.62%"
+  },
+  {
+    "id": "009150.KS",
+    "name": "Samsung Electro-Mechanics Co Ltd",
+    "weight": "3.27%"
+  },
+  {
+    "id": "WDC",
+    "name": "Western Digital Corp",
+    "weight": "2.48%"
+  },
+  {
+    "id": "5706.T",
+    "name": "Mitsui Kinzoku Co Ltd",
+    "weight": "2.15%"
+  },
+  {
+    "id": "GLW",
+    "name": "Corning Inc",
+    "weight": "2.11%"
+  },
+  {
+    "id": "6787.T",
+    "name": "Meiko Electronics Co Ltd",
+    "weight": "2.09%"
+  },
+  {
+    "id": "2383.TW",
+    "name": "台光電",
+    "weight": "2.08%"
+  },
+  {
+    "id": "AIXA",
+    "name": "AIXA",
+    "weight": "2.06%"
+  },
+  {
+    "id": "4062.T",
+    "name": "Ibiden Co Ltd",
+    "weight": "1.97%"
+  },
+  {
+    "id": "NVDA",
+    "name": "NVIDIA Corp",
+    "weight": "1.70%"
+  },
+  {
+    "id": "2345.TW",
+    "name": "智邦",
+    "weight": "1.69%"
+  },
+  {
+    "id": "000660.KS",
+    "name": "SK hynix Inc",
+    "weight": "1.59%"
+  },
+  {
+    "id": "AAOI",
+    "name": "Applied Optoelectronics Inc",
+    "weight": "1.50%"
+  },
+  {
+    "id": "STX",
+    "name": "Seagate Technology Holdings PLC",
+    "weight": "1.45%"
+  },
+  {
+    "id": "GOOGL",
+    "name": "Alphabet Inc",
+    "weight": "1.44%"
+  },
+  {
+    "id": "5347.TWO",
+    "name": "世界",
+    "weight": "1.26%"
+  },
+  {
+    "id": "AVGO",
+    "name": "Broadcom Inc",
+    "weight": "1.25%"
+  },
+  {
+    "id": "SMTC",
+    "name": "Semtech Corp",
+    "weight": "1.17%"
+  },
+  {
+    "id": "3653.TW",
+    "name": "健策",
+    "weight": "1.13%"
+  },
+  {
+    "id": "NOK",
+    "name": "Nokia Oyj",
+    "weight": "1.05%"
+  },
+  {
+    "id": "NVTS",
+    "name": "Navitas Semiconductor Corp",
+    "weight": "0.87%"
+  },
+  {
+    "id": "AEHR",
+    "name": "Aehr Test Systems",
+    "weight": "0.76%"
+  },
+  {
+    "id": "2360.TW",
+    "name": "致茂",
+    "weight": "0.72%"
+  },
+  {
+    "id": "STM",
+    "name": "STMicroelectronics NV",
+    "weight": "0.67%"
+  },
+  {
+    "id": "010120.KS",
+    "name": "LS Electric Co Ltd",
+    "weight": "0.61%"
+  },
+  {
+    "id": "6777.T",
+    "name": "Santec Holdings Corp",
+    "weight": "0.60%"
+  },
+  {
+    "id": "6976.T",
+    "name": "Taiyo Yuden Co Ltd",
+    "weight": "0.52%"
+  },
+  {
+    "id": "4958.TW",
+    "name": "臻鼎-KY",
+    "weight": "0.50%"
+  }
+]
