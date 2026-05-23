@@ -124,6 +124,7 @@
         .reg-DE { background: rgba(168,85,247,.14); color: #c084fc; }
         .reg-FR { background: rgba(14,165,233,.14); color: #38bdf8; }
         .reg-HK { background: rgba(249,115,22,.14); color: #fb923c; }
+        .reg-CN { background: rgba(239,68,68,.14);  color: #ef4444; }
         [data-theme="light"] .reg-TW { background: rgba(59,130,246,.12);  color: #2563eb; }
         [data-theme="light"] .reg-US { background: rgba(220,38,38,.10);   color: #dc2626; }
         [data-theme="light"] .reg-JP { background: rgba(217,119,6,.12);   color: #b45309; }
@@ -131,6 +132,7 @@
         [data-theme="light"] .reg-DE { background: rgba(124,58,237,.12);  color: #7c3aed; }
         [data-theme="light"] .reg-FR { background: rgba(2,132,199,.12);   color: #0284c7; }
         [data-theme="light"] .reg-HK { background: rgba(234,88,12,.12);   color: #ea580c; }
+        [data-theme="light"] .reg-CN { background: rgba(220,38,38,.10);   color: #dc2626; }
 
         .sc-info { position: relative; padding-left: 12px; min-width: 0; }
         .sc-dot { position: absolute; left: 1px; top: 50%; transform: translateY(-50%); width: 6px; height: 6px; border-radius: 50%; }
@@ -247,6 +249,7 @@
             <div class="etf-toggle">
                 <button class="etf-btn active" id="btn-988" onclick="switchEtf('00988A')">00988A</button>
                 <button class="etf-btn"        id="btn-990" onclick="switchEtf('00990A')">00990A</button>
+                <button class="etf-btn"        id="btn-981" onclick="switchEtf('00981A')">00981A</button>
             </div>
             <span class="topbar-time" id="last-update">--</span>
             <div class="theme-dd">
@@ -336,6 +339,7 @@
                     <button class="dd-item" onclick="selectRegion('DE')"><span>🇩🇪 德國市場</span><span id="w-DE" class="dd-wt">--%</span></button>
                     <button class="dd-item" onclick="selectRegion('FR')"><span>🇫🇷 法國市場</span><span id="w-FR" class="dd-wt">--%</span></button>
                     <button class="dd-item" onclick="selectRegion('HK')"><span>🇭🇰 香港市場</span><span id="w-HK" class="dd-wt">--%</span></button>
+                    <button class="dd-item" onclick="selectRegion('CN')"><span>🇨🇳 中國市場</span><span id="w-CN" class="dd-wt">--%</span></button>
                 </div>
             </div>
             <button id="toggle-filter" class="tbtn" onclick="toggleMode()">
@@ -418,22 +422,25 @@
     let isFiltered = false;
     let currentRegion = 'ALL';
     let hmActive = false;
-    const regionNames = { ALL:'全部區域', TW:'台灣', US:'美國', JP:'日本', KR:'韓國', DE:'德國', FR:'法國', HK:'香港' };
-    const regionFlags = { ALL:'🌍', TW:'🇹🇼', US:'🇺🇸', JP:'🇯🇵', KR:'🇰🇷', DE:'🇩🇪', FR:'🇫🇷', HK:'🇭🇰' };
+    const regionNames = { ALL:'全部區域', TW:'台灣', US:'美國', JP:'日本', KR:'韓國', DE:'德國', FR:'法國', HK:'香港', CN:'中國' };
+    const regionFlags = { ALL:'🌍', TW:'🇹🇼', US:'🇺🇸', JP:'🇯🇵', KR:'🇰🇷', DE:'🇩🇪', FR:'🇫🇷', HK:'🇭🇰', CN:'🇨🇳' };
     const API = 'http://127.0.0.1:5000/api';
 
     const ETF_META = {
         '00988A': { name: '00988A 成分股監控', sub: '全球 AI 科技 ETF · 即時追蹤' },
         '00990A': { name: '00990A 成分股監控', sub: '元大全球 AI 晶片 ETF · 即時追蹤' },
+        '00981A': { name: '00981A 成分股監控', sub: '統一台股 ETF · 即時追蹤' },
     };
+    const ETF_BTN_MAP = { '00988A': 'btn-988', '00990A': 'btn-990', '00981A': 'btn-981' };
     let currentEtf = localStorage.getItem('etf-current') || '00988A';
 
     function switchEtf(etf) {
         if (etf === currentEtf) return;
         currentEtf = etf;
         localStorage.setItem('etf-current', etf);
-        document.getElementById('btn-988').classList.toggle('active', etf === '00988A');
-        document.getElementById('btn-990').classList.toggle('active', etf === '00990A');
+        Object.entries(ETF_BTN_MAP).forEach(([e, id]) => {
+            document.getElementById(id).classList.toggle('active', e === etf);
+        });
         const m = ETF_META[etf];
         document.getElementById('brand-name').textContent = m.name;
         document.getElementById('brand-sub').textContent  = m.sub;
@@ -446,12 +453,15 @@
 
     // Restore ETF on page load
     (function() {
-        if (currentEtf === '00990A') {
-            document.getElementById('btn-988').classList.remove('active');
-            document.getElementById('btn-990').classList.add('active');
-            const m = ETF_META['00990A'];
-            document.getElementById('brand-name').textContent = m.name;
-            document.getElementById('brand-sub').textContent  = m.sub;
+        Object.entries(ETF_BTN_MAP).forEach(([e, id]) => {
+            document.getElementById(id).classList.toggle('active', e === currentEtf);
+        });
+        if (currentEtf !== '00988A') {
+            const m = ETF_META[currentEtf];
+            if (m) {
+                document.getElementById('brand-name').textContent = m.name;
+                document.getElementById('brand-sub').textContent  = m.sub;
+            }
         }
     })();
 
@@ -520,7 +530,7 @@
         });
         if (totalW > 0) Object.keys(regions).forEach(r => { regions[r].contrib /= totalW; });
 
-        const ORDER = ['US','TW','JP','KR','DE','FR','HK'];
+        const ORDER = ['US','TW','JP','KR','DE','FR','HK','CN'];
         const sorted = Object.keys(regions).sort((a, b) => {
             const ia = ORDER.indexOf(a), ib = ORDER.indexOf(b);
             if (ia === -1 && ib === -1) return 0;
@@ -666,7 +676,7 @@
         const tbody = document.getElementById('stock-list');
         const data  = [...rawData];
 
-        const sum = { TW:0, US:0, JP:0, KR:0, DE:0, FR:0, HK:0 };
+        const sum = { TW:0, US:0, JP:0, KR:0, DE:0, FR:0, HK:0, CN:0 };
         rawData.forEach(s => { if (s.region in sum) sum[s.region] += parseFloat(s.weight) || 0; });
         Object.keys(sum).forEach(r => {
             const el = document.getElementById(`w-${r}`);

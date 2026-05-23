@@ -24,11 +24,16 @@ _DIR = os.path.dirname(os.path.abspath(__file__))
 # ── Taiwan OTC stock codes ─────────────────────────────────────────────────────
 TWO_CODES_988 = {"5274", "6223", "6274"}
 TWO_CODES_990 = {"5274", "5347", "6274"}
+TWO_CODES_981 = {
+    "5274", "6223", "6274", "5347",  # 已知 TPEX（與 988/990 共用）
+    "1815", "3217", "3264", "4966", "5439",
+    "6147", "6187", "6510", "8358",
+}
 
 SUFFIX_MAP_988 = {"JP": ".T", "KS": ".KS", "KQ": ".KQ", "HK": ".HK", "GY": ".DE", "FP": ".PA"}
-SUFFIX_MAP_990 = {"JP": ".T", "KP": ".KS", "KQ": ".KQ", "HK": ".HK", "GY": ".DE", "FP": ".PA"}
+SUFFIX_MAP_990 = {"JP": ".T", "KP": ".KS", "KQ": ".KQ", "HK": ".HK", "GY": ".DE", "GR": ".DE", "FP": ".PA"}
 
-NON_US_SUFFIXES = (".TW", ".TWO", ".T", ".KS", ".KQ", ".DE", ".PA", ".HK")
+NON_US_SUFFIXES = (".TW", ".TWO", ".T", ".KS", ".KQ", ".DE", ".PA", ".HK", ".SS", ".SZ")
 
 # ── Holdings globals ──────────────────────────────────────────────────────────
 STOCKS_988: list = []
@@ -39,11 +44,16 @@ STOCKS_990: list = []
 PREV_STOCKS_990: list = []
 CURRENT_STOCKS_990: list = []
 
+STOCKS_981: list = []
+PREV_STOCKS_981: list = []
+CURRENT_STOCKS_981: list = []
+
 # ── Result caches ─────────────────────────────────────────────────────────────
 _stocks_cache_988: list = []
 _stocks_cache_990: list = []
+_stocks_cache_981: list = []
 _indices_cache: list = []
-_nav_cache: dict = {}       # {"00988A": {...}, "00990A": {...}}
+_nav_cache: dict = {}       # {"00988A": {...}, "00990A": {...}, "00981A": {...}}
 
 # ── Slow cache (history + metadata, every 10 min) ─────────────────────────────
 _hist_cache: dict = {}
@@ -64,6 +74,8 @@ def convert_ticker_988(raw_code, exchange):
     exch = str(exchange).strip().upper() if exchange else ""
     if exch in SUFFIX_MAP_988:
         return code + SUFFIX_MAP_988[exch]
+    if exch == "CH":
+        return code + (".SS" if code.startswith("6") else ".SZ")
     if exch in ("", "TW"):
         return code + (".TWO" if code in TWO_CODES_988 else ".TW")
     return code
@@ -77,6 +89,11 @@ def convert_ticker_990(raw_code, exchange):
     if exch in ("", "TW"):
         return code + (".TWO" if code in TWO_CODES_990 else ".TW")
     return code
+
+
+def convert_ticker_981(raw_code, exchange):
+    code = str(raw_code).strip()
+    return code + (".TWO" if code in TWO_CODES_981 else ".TW")
 
 
 def parse_weight(raw):
@@ -96,7 +113,7 @@ def parse_weight(raw):
 # 00988A: ezmoney XLSX
 # ─────────────────────────────────────────────────────────────────────────────
 
-def parse_xlsx_bytes(content: bytes) -> list:
+def parse_xlsx_bytes(content: bytes, converter=None) -> list:
     df = pd.read_excel(io.BytesIO(content), sheet_name=0, header=None)
     header_row = None
     for i, row in df.iterrows():
@@ -107,6 +124,7 @@ def parse_xlsx_bytes(content: bytes) -> list:
         raise ValueError("找不到「股票代號」標題列")
     df.columns = df.iloc[header_row].astype(str).str.strip()
     df = df.iloc[header_row + 1:].reset_index(drop=True)
+    _conv = converter if converter else convert_ticker_988
     stocks = []
     for _, row in df.iterrows():
         raw = str(row.get("股票代號", "")).strip()
@@ -118,7 +136,7 @@ def parse_xlsx_bytes(content: bytes) -> list:
         w = parse_weight(row.get("持股權重", ""))
         if w is None:
             continue
-        stocks.append({"id": convert_ticker_988(code, exch), "name": name, "weight": f"{w:.2f}%"})
+        stocks.append({"id": _conv(code, exch), "name": name, "weight": f"{w:.2f}%"})
     stocks.sort(key=lambda x: float(x["weight"].replace("%", "")), reverse=True)
     return stocks
 
@@ -132,6 +150,17 @@ def fetch_etf_holdings_988() -> list:
     resp = requests.get(url, headers=headers, timeout=15)
     resp.raise_for_status()
     return parse_xlsx_bytes(resp.content)
+
+
+def fetch_etf_holdings_981() -> list:
+    url = "https://www.ezmoney.com.tw/ETF/Fund/AssetExcelNPOI?fundCode=49YTW"
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/124.0.0.0 Safari/537.36",
+        "Referer": "https://www.ezmoney.com.tw/ETF/Fund/Info?fundCode=49YTW",
+    }
+    resp = requests.get(url, headers=headers, timeout=15)
+    resp.raise_for_status()
+    return parse_xlsx_bytes(resp.content, converter=convert_ticker_981)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -209,6 +238,8 @@ def check_market_status(ticker: str) -> bool:
             tz, open_t, close_t = pytz.timezone("Asia/Hong_Kong"), dtime(9, 30), dtime(16, 0)
         elif ".DE" in ticker or ".PA" in ticker:
             tz, open_t, close_t = pytz.timezone("Europe/Berlin"),  dtime(9, 0),  dtime(17, 30)
+        elif ".SS" in ticker or ".SZ" in ticker:
+            tz, open_t, close_t = pytz.timezone("Asia/Shanghai"),  dtime(9, 30), dtime(15, 0)
         else:
             tz, open_t, close_t = pytz.timezone("America/New_York"), dtime(9, 30), dtime(16, 0)
         m_now = now_utc.astimezone(tz)
@@ -251,6 +282,8 @@ def _get_ticker_meta(stocks: list) -> dict:
         ".DE":  {"flag": "🇩🇪", "region": "DE"},
         ".PA":  {"flag": "🇫🇷", "region": "FR"},
         ".HK":  {"flag": "🇭🇰", "region": "HK"},
+        ".SS":  {"flag": "🇨🇳", "region": "CN"},
+        ".SZ":  {"flag": "🇨🇳", "region": "CN"},
     }
     result = {}
     for s in stocks:
@@ -276,7 +309,7 @@ def _weight_change(tk: str, current_weight_str: str, prev_stocks: list):
 
 def get_all_tickers() -> list:
     seen, result = set(), []
-    for s in STOCKS_988 + STOCKS_990:
+    for s in STOCKS_988 + STOCKS_990 + STOCKS_981:
         if s["id"] not in seen:
             seen.add(s["id"])
             result.append(s["id"])
@@ -528,7 +561,7 @@ def _do_slow_refresh():
     global _hist_cache, _meta_cache
     try:
         all_tks    = get_all_tickers()
-        all_stocks = STOCKS_988 + STOCKS_990
+        all_stocks = STOCKS_988 + STOCKS_990 + STOCKS_981
         all_meta   = _get_ticker_meta(all_stocks)
         non_us_tks = [tk for tk in all_tks if all_meta.get(tk, {}).get("region") != "US"]
         with ThreadPoolExecutor(max_workers=2) as ex:
@@ -552,7 +585,7 @@ def _slow_refresh_loop():
 
 
 def _fast_refresh_loop():
-    global _stocks_cache_988, _stocks_cache_990
+    global _stocks_cache_988, _stocks_cache_990, _stocks_cache_981
     _slow_ready.wait(timeout=120)
     while True:
         try:
@@ -560,6 +593,7 @@ def _fast_refresh_loop():
             all_tks  = get_all_tickers()
             meta_988 = _get_ticker_meta(STOCKS_988)
             meta_990 = _get_ticker_meta(STOCKS_990)
+            meta_981 = _get_ticker_meta(STOCKS_981)
 
             quote_map = _batch_quote(all_tks)
 
@@ -571,14 +605,18 @@ def _fast_refresh_loop():
                                          hist_map, quote_map, meta_map, meta_988)
             data_990 = _assemble_results(STOCKS_990, PREV_STOCKS_990,
                                          hist_map, quote_map, meta_map, meta_990)
+            data_981 = _assemble_results(STOCKS_981, PREV_STOCKS_981,
+                                         hist_map, quote_map, meta_map, meta_981)
 
             with _cache_lock:
                 if any(r["price"] > 0 for r in data_988):
                     _stocks_cache_988 = data_988
                 if any(r["price"] > 0 for r in data_990):
                     _stocks_cache_990 = data_990
+                if any(r["price"] > 0 for r in data_981):
+                    _stocks_cache_981 = data_981
             _cache_ready.set()
-            print(f"[CACHE] 988A:{len(data_988)} 990A:{len(data_990)} 耗時 {_time.monotonic()-t0:.1f}s")
+            print(f"[CACHE] 988A:{len(data_988)} 990A:{len(data_990)} 981A:{len(data_981)} 耗時 {_time.monotonic()-t0:.1f}s")
         except Exception as e:
             print(f"[CACHE] refresh 失敗: {e}")
         _time.sleep(45)
@@ -654,6 +692,27 @@ def _apply_holdings_update_990(new_holdings: list):
         print(f"[INFO] 00990A 持股未變化（{len(STOCKS_990)} 檔）")
 
 
+def _apply_holdings_update_981(new_holdings: list):
+    global STOCKS_981, PREV_STOCKS_981, CURRENT_STOCKS_981
+    if not new_holdings:
+        return
+    if not _holdings_equal(new_holdings, CURRENT_STOCKS_981):
+        PREV_STOCKS_981    = list(CURRENT_STOCKS_981) if CURRENT_STOCKS_981 else list(new_holdings)
+        STOCKS_981         = new_holdings
+        CURRENT_STOCKS_981 = new_holdings
+        _save_holdings_file(os.path.join(_DIR, "prev_holdings_981.json"),    PREV_STOCKS_981)
+        _save_holdings_file(os.path.join(_DIR, "current_holdings_981.json"), STOCKS_981)
+        print(f"[INFO] 00981A 持股更新 {len(PREV_STOCKS_981)}→{len(STOCKS_981)}")
+        _slow_ready.clear()
+        threading.Thread(target=_do_slow_refresh, daemon=True).start()
+    else:
+        STOCKS_981 = new_holdings
+        if not PREV_STOCKS_981 and CURRENT_STOCKS_981:
+            PREV_STOCKS_981 = list(CURRENT_STOCKS_981)
+            _save_holdings_file(os.path.join(_DIR, "prev_holdings_981.json"), PREV_STOCKS_981)
+        print(f"[INFO] 00981A 持股未變化（{len(STOCKS_981)} 檔）")
+
+
 # ─────────────────────────────────────────────────────────────────────────────
 # Startup: load holdings
 # ─────────────────────────────────────────────────────────────────────────────
@@ -681,6 +740,18 @@ except Exception as e:
     print(f"[ERROR] 00990A 啟動載入失敗: {e}")
     STOCKS_990 = CURRENT_STOCKS_990 or PREV_STOCKS_990
     print(f"[INFO] 00990A fallback {len(STOCKS_990)} 檔")
+
+PREV_STOCKS_981    = _load_holdings_file(os.path.join(_DIR, "prev_holdings_981.json"))
+CURRENT_STOCKS_981 = _load_holdings_file(os.path.join(_DIR, "current_holdings_981.json"))
+print(f"[OK] 00981A prev={len(PREV_STOCKS_981)} current={len(CURRENT_STOCKS_981)}")
+
+try:
+    _new981 = fetch_etf_holdings_981()
+    _apply_holdings_update_981(_new981)
+except Exception as e:
+    print(f"[ERROR] 00981A 啟動載入失敗: {e}")
+    STOCKS_981 = CURRENT_STOCKS_981 or PREV_STOCKS_981
+    print(f"[INFO] 00981A fallback {len(STOCKS_981)} 檔")
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Start background threads
@@ -750,7 +821,12 @@ def get_stocks():
     etf = request.args.get("etf", "00988A")
     _cache_ready.wait(timeout=120)
     with _cache_lock:
-        return jsonify(_stocks_cache_990 if etf == "00990A" else _stocks_cache_988)
+        if etf == "00990A":
+            return jsonify(_stocks_cache_990)
+        elif etf == "00981A":
+            return jsonify(_stocks_cache_981)
+        else:
+            return jsonify(_stocks_cache_988)
 
 
 @app.route("/api/reload", methods=["POST"])
@@ -760,6 +836,9 @@ def reload_stocks():
         if etf == "00990A":
             _apply_holdings_update_990(fetch_etf_holdings_990())
             return jsonify({"status": "ok", "etf": etf, "count": len(STOCKS_990)})
+        elif etf == "00981A":
+            _apply_holdings_update_981(fetch_etf_holdings_981())
+            return jsonify({"status": "ok", "etf": etf, "count": len(STOCKS_981)})
         else:
             _apply_holdings_update_988(fetch_etf_holdings_988())
             return jsonify({"status": "ok", "etf": etf, "count": len(STOCKS_988)})
