@@ -73,6 +73,9 @@ _slow_ready = threading.Event()
 _cache_lock  = threading.Lock()
 _cache_ready = threading.Event()
 
+_indices_lock  = threading.Lock()
+_indices_ready = threading.Event()
+
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Ticker conversion
@@ -596,11 +599,10 @@ def _fast_refresh_loop():
     _slow_ready.wait(timeout=120)
     while True:
         try:
-            t0       = _time.monotonic()
-            all_tks  = get_all_tickers()
-            meta_988 = _get_ticker_meta(STOCKS_988)
-            meta_990 = _get_ticker_meta(STOCKS_990)
-            meta_981 = _get_ticker_meta(STOCKS_981)
+            t0              = _time.monotonic()
+            all_tks         = get_all_tickers()
+            all_ticker_meta = _get_ticker_meta(STOCKS_988 + STOCKS_990 + STOCKS_981)
+            meta_988 = meta_990 = meta_981 = all_ticker_meta
 
             quote_map = _batch_quote(all_tks)
 
@@ -657,67 +659,47 @@ def _holdings_equal(a: list, b: list) -> bool:
     return {s["id"]: s["weight"] for s in a} == {s["id"]: s["weight"] for s in b}
 
 
-def _apply_holdings_update_988(new_holdings: list):
-    global STOCKS_988, PREV_STOCKS_988, CURRENT_STOCKS_988
+_ETF_HOLDINGS_CFG = {
+    "00988A": ("STOCKS_988", "PREV_STOCKS_988", "CURRENT_STOCKS_988",
+               "prev_holdings.json", "current_holdings.json"),
+    "00990A": ("STOCKS_990", "PREV_STOCKS_990", "CURRENT_STOCKS_990",
+               "prev_holdings_990.json", "current_holdings_990.json"),
+    "00981A": ("STOCKS_981", "PREV_STOCKS_981", "CURRENT_STOCKS_981",
+               "prev_holdings_981.json", "current_holdings_981.json"),
+}
+
+
+def _apply_holdings_update(etf_label: str, new_holdings: list):
     if not new_holdings:
         return
-    if not _holdings_equal(new_holdings, CURRENT_STOCKS_988):
-        PREV_STOCKS_988    = list(CURRENT_STOCKS_988) if CURRENT_STOCKS_988 else list(new_holdings)
-        STOCKS_988         = new_holdings
-        CURRENT_STOCKS_988 = new_holdings
-        _save_holdings_file(os.path.join(_HOLDINGS_DIR, "prev_holdings.json"),    PREV_STOCKS_988)
-        _save_holdings_file(os.path.join(_HOLDINGS_DIR, "current_holdings.json"), STOCKS_988)
-        print(f"[INFO] 00988A 持股更新 {len(PREV_STOCKS_988)}→{len(STOCKS_988)}")
+    g = globals()
+    stocks_var, prev_var, current_var, prev_file, curr_file = _ETF_HOLDINGS_CFG[etf_label]
+    current = g[current_var]
+    if not _holdings_equal(new_holdings, current):
+        g[prev_var]    = list(current) if current else list(new_holdings)
+        g[stocks_var]  = new_holdings
+        g[current_var] = new_holdings
+        _save_holdings_file(os.path.join(_HOLDINGS_DIR, prev_file), g[prev_var])
+        _save_holdings_file(os.path.join(_HOLDINGS_DIR, curr_file), g[stocks_var])
+        print(f"[INFO] {etf_label} 持股更新 {len(g[prev_var])}→{len(g[stocks_var])}")
         _slow_ready.clear()
         threading.Thread(target=_do_slow_refresh, daemon=True).start()
     else:
-        STOCKS_988 = new_holdings
-        if not PREV_STOCKS_988 and CURRENT_STOCKS_988:
-            PREV_STOCKS_988 = list(CURRENT_STOCKS_988)
-            _save_holdings_file(os.path.join(_HOLDINGS_DIR, "prev_holdings.json"), PREV_STOCKS_988)
-        print(f"[INFO] 00988A 持股未變化（{len(STOCKS_988)} 檔）")
+        g[stocks_var] = new_holdings
+        if not g[prev_var] and current:
+            g[prev_var] = list(current)
+            _save_holdings_file(os.path.join(_HOLDINGS_DIR, prev_file), g[prev_var])
+        print(f"[INFO] {etf_label} 持股未變化（{len(g[stocks_var])} 檔）")
 
+
+def _apply_holdings_update_988(new_holdings: list):
+    _apply_holdings_update("00988A", new_holdings)
 
 def _apply_holdings_update_990(new_holdings: list):
-    global STOCKS_990, PREV_STOCKS_990, CURRENT_STOCKS_990
-    if not new_holdings:
-        return
-    if not _holdings_equal(new_holdings, CURRENT_STOCKS_990):
-        PREV_STOCKS_990    = list(CURRENT_STOCKS_990) if CURRENT_STOCKS_990 else list(new_holdings)
-        STOCKS_990         = new_holdings
-        CURRENT_STOCKS_990 = new_holdings
-        _save_holdings_file(os.path.join(_HOLDINGS_DIR, "prev_holdings_990.json"),    PREV_STOCKS_990)
-        _save_holdings_file(os.path.join(_HOLDINGS_DIR, "current_holdings_990.json"), STOCKS_990)
-        print(f"[INFO] 00990A 持股更新 {len(PREV_STOCKS_990)}→{len(STOCKS_990)}")
-        _slow_ready.clear()
-        threading.Thread(target=_do_slow_refresh, daemon=True).start()
-    else:
-        STOCKS_990 = new_holdings
-        if not PREV_STOCKS_990 and CURRENT_STOCKS_990:
-            PREV_STOCKS_990 = list(CURRENT_STOCKS_990)
-            _save_holdings_file(os.path.join(_HOLDINGS_DIR, "prev_holdings_990.json"), PREV_STOCKS_990)
-        print(f"[INFO] 00990A 持股未變化（{len(STOCKS_990)} 檔）")
-
+    _apply_holdings_update("00990A", new_holdings)
 
 def _apply_holdings_update_981(new_holdings: list):
-    global STOCKS_981, PREV_STOCKS_981, CURRENT_STOCKS_981
-    if not new_holdings:
-        return
-    if not _holdings_equal(new_holdings, CURRENT_STOCKS_981):
-        PREV_STOCKS_981    = list(CURRENT_STOCKS_981) if CURRENT_STOCKS_981 else list(new_holdings)
-        STOCKS_981         = new_holdings
-        CURRENT_STOCKS_981 = new_holdings
-        _save_holdings_file(os.path.join(_HOLDINGS_DIR, "prev_holdings_981.json"),    PREV_STOCKS_981)
-        _save_holdings_file(os.path.join(_HOLDINGS_DIR, "current_holdings_981.json"), STOCKS_981)
-        print(f"[INFO] 00981A 持股更新 {len(PREV_STOCKS_981)}→{len(STOCKS_981)}")
-        _slow_ready.clear()
-        threading.Thread(target=_do_slow_refresh, daemon=True).start()
-    else:
-        STOCKS_981 = new_holdings
-        if not PREV_STOCKS_981 and CURRENT_STOCKS_981:
-            PREV_STOCKS_981 = list(CURRENT_STOCKS_981)
-            _save_holdings_file(os.path.join(_HOLDINGS_DIR, "prev_holdings_981.json"), PREV_STOCKS_981)
-        print(f"[INFO] 00981A 持股未變化（{len(STOCKS_981)} 檔）")
+    _apply_holdings_update("00981A", new_holdings)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -795,15 +777,26 @@ def get_tw_future_scraper():
         return {"name": "台指期夜盤", "price": 0, "change_pts": 0, "change_pct": 0}
 
 
-def _fetch_v8_quote(sid):
+
+_INDICES_TARGETS = [
+    ("^DJI",    "道瓊工業"),
+    ("^SOX",    "費半"),
+    ("^N225",   "日經225"),
+    ("^KS11",   "韓國KOSPI"),
+    ("BTC-USD", "BTC 比特幣"),
+    ("BZ=F",    "布蘭特原油"),
+    ("TSM",     "TSM ADR"),
+]
+
+
+async def _fetch_v8_quote_async(session: aiohttp.ClientSession, sid: str) -> tuple:
     try:
-        r = requests.get(
+        async with session.get(
             f"https://query1.finance.yahoo.com/v8/finance/chart/{sid}",
             params={"interval": "1d", "range": "5d"},
-            headers={"User-Agent": "Mozilla/5.0"},
-            timeout=8,
-        )
-        res = r.json().get("chart", {}).get("result", [])
+        ) as r:
+            data = await r.json(content_type=None)
+        res = data.get("chart", {}).get("result", [])
         if not res:
             return sid, None
         meta   = res[0].get("meta", {})
@@ -811,12 +804,49 @@ def _fetch_v8_quote(sid):
         closes = [float(c) for c in res[0].get("indicators", {}).get("quote", [{}])[0].get("close", []) if c is not None]
         if not curr or len(closes) < 2:
             return sid, None
-        curr = float(curr)
+        curr       = float(curr)
         last_close = closes[-1]
         prev = closes[-2] if abs(curr - last_close) / last_close < 0.001 else last_close
         return sid, {"curr": curr, "prev": prev}
     except Exception:
         return sid, None
+
+
+async def _fetch_indices_async() -> list:
+    connector = aiohttp.TCPConnector(limit=10)
+    timeout   = aiohttp.ClientTimeout(total=12)
+    async with aiohttp.ClientSession(headers=_V8_HEADERS, connector=connector, timeout=timeout) as session:
+        tasks   = [_fetch_v8_quote_async(session, sid) for sid, _ in _INDICES_TARGETS]
+        raw     = await asyncio.gather(*tasks, return_exceptions=True)
+    quote_map = {sid: info for sid, info in raw if isinstance(info, dict)}
+    out = []
+    for sid, name in _INDICES_TARGETS:
+        q = quote_map.get(sid)
+        if q and q["curr"] and q["prev"]:
+            pts = q["curr"] - q["prev"]
+            pct = pts / q["prev"] * 100
+            out.append({"name": name, "price": q["curr"], "change_pts": pts, "change_pct": pct})
+        else:
+            out.append({"name": name, "price": 0, "change_pts": 0, "change_pct": 0})
+    out.append(get_tw_future_scraper())
+    return out
+
+
+def _indices_refresh_loop():
+    global _indices_cache
+    while True:
+        try:
+            results = asyncio.run(_fetch_indices_async())
+            if sum(1 for r in results if r["price"] > 0 and r["name"] != "台指期夜盤") >= 1:
+                with _indices_lock:
+                    _indices_cache = results
+                _indices_ready.set()
+                print(f"[INDICES] 刷新完成")
+        except Exception as e:
+            print(f"[INDICES] 失敗: {e}")
+        _time.sleep(30)
+
+threading.Thread(target=_indices_refresh_loop, daemon=True).start()
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -855,32 +885,9 @@ def reload_stocks():
 
 @app.route("/api/indices")
 def get_indices():
-    targets = [
-        ("^DJI",    "道瓊工業"),
-        ("^SOX",    "費半"),
-        ("^N225",   "日經225"),
-        ("^KS11",   "韓國KOSPI"),
-        ("BTC-USD", "BTC 比特幣"),
-        ("BZ=F",    "布蘭特原油"),
-        ("TSM",     "TSM ADR"),
-    ]
-    with ThreadPoolExecutor(max_workers=len(targets)) as ex:
-        quote_map = dict(ex.map(_fetch_v8_quote, [s for s, _ in targets]))
-    results = []
-    for sid, name in targets:
-        q = quote_map.get(sid)
-        if q and q["curr"] and q["prev"]:
-            pts = q["curr"] - q["prev"]
-            pct = pts / q["prev"] * 100
-            results.append({"name": name, "price": q["curr"], "change_pts": pts, "change_pct": pct})
-        else:
-            results.append({"name": name, "price": 0, "change_pts": 0, "change_pct": 0})
-    results.append(get_tw_future_scraper())
-    global _indices_cache
-    if sum(1 for r in results if r["price"] > 0 and r["name"] != "台指期夜盤") >= 1:
-        _indices_cache = results
-        return jsonify(results)
-    return jsonify(_indices_cache if _indices_cache else results)
+    _indices_ready.wait(timeout=35)
+    with _indices_lock:
+        return jsonify(list(_indices_cache) if _indices_cache else [])
 
 
 _YUANTA_DEVICE_ID = str(uuid.uuid4())
@@ -1006,22 +1013,22 @@ def get_etf_nav():
     BASE = "https://www.ezmoney.com.tw"
     UA   = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/147.0.0.0 Safari/537.36"
     try:
-        sess = requests.Session()
-        sess.cookies.set("agree", "y", domain="www.ezmoney.com.tw", path="/")
-        sess.get(f"{BASE}/ETF/Transaction/Estimate", params={"agree": "y"},
-                 headers={"User-Agent": UA, "Accept": "text/html,*/*"}, timeout=12)
-        resp = sess.post(
-            f"{BASE}/ETF/Transaction/GetInTimeEstimation", json={},
-            headers={
-                "User-Agent": UA,
-                "Accept": "application/json, text/javascript, */*; q=0.01",
-                "Content-Type": "application/json; charset=UTF-8",
-                "X-Requested-With": "XMLHttpRequest",
-                "Referer": f"{BASE}/ETF/Transaction/Estimate?agree=y",
-                "Origin": BASE,
-            }, timeout=12,
-        )
-        data     = resp.json()
+        with requests.Session() as sess:
+            sess.cookies.set("agree", "y", domain="www.ezmoney.com.tw", path="/")
+            sess.get(f"{BASE}/ETF/Transaction/Estimate", params={"agree": "y"},
+                     headers={"User-Agent": UA, "Accept": "text/html,*/*"}, timeout=12)
+            resp = sess.post(
+                f"{BASE}/ETF/Transaction/GetInTimeEstimation", json={},
+                headers={
+                    "User-Agent": UA,
+                    "Accept": "application/json, text/javascript, */*; q=0.01",
+                    "Content-Type": "application/json; charset=UTF-8",
+                    "X-Requested-With": "XMLHttpRequest",
+                    "Referer": f"{BASE}/ETF/Transaction/Estimate?agree=y",
+                    "Origin": BASE,
+                }, timeout=12,
+            )
+            data = resp.json()
         etf_data = next((x for x in data.get("inTimeEstimation", [])
                          if x.get("StockNo") == etf), None)
         usd_twd  = None
