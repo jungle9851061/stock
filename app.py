@@ -480,9 +480,9 @@ async def _batch_quote_async(tickers: list) -> dict:
             if isinstance(item, dict):
                 out.update(item)
 
-        # 盤前或盤後：補抓美股延伸盤價
+        # 非盤中時段：補抓美股延伸盤價（PRE/POST/CLOSED 都抓，讓 24 小時都看得到最後延伸盤價）
         us_ms = _get_us_market_state()
-        if us_ms in ("PRE", "POST"):
+        if us_ms != "REGULAR":
             us_tks = [tk for tk in tickers if not any(tk.endswith(s) for s in NON_US_SUFFIXES)]
             if us_tks:
                 ext_map = await _fetch_us_extended_async(session, us_tks)
@@ -490,7 +490,7 @@ async def _batch_quote_async(tickers: list) -> dict:
                     if tk in out:
                         if us_ms == "PRE":
                             out[tk]["pre_price"]  = ext_price
-                        else:
+                        else:  # POST 或 CLOSED
                             out[tk]["post_price"] = ext_price
     return out
 
