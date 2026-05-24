@@ -36,14 +36,15 @@ python app.py
 
 ```
 stock/
-├── app.py                    # Flask 後端
-├── stock.html                # 單頁前端儀表板
-├── current_holdings.json     # 00988A 目前成分股
-├── prev_holdings.json        # 00988A 上次成分股（用於變化比對）
-├── current_holdings_990.json # 00990A 目前成分股
-├── prev_holdings_990.json    # 00990A 上次成分股
-├── current_holdings_981.json # 00981A 目前成分股
-└── prev_holdings_981.json    # 00981A 上次成分股
+├── app.py                        # Flask 後端
+├── stock.html                    # 單頁前端儀表板
+└── holdings/                     # ETF 持股資料（自動產生）
+    ├── current_holdings.json     # 00988A 目前成分股
+    ├── prev_holdings.json        # 00988A 上次成分股（用於變化比對）
+    ├── current_holdings_990.json # 00990A 目前成分股
+    ├── prev_holdings_990.json    # 00990A 上次成分股
+    ├── current_holdings_981.json # 00981A 目前成分股
+    └── prev_holdings_981.json    # 00981A 上次成分股
 ```
 
 ## API 端點

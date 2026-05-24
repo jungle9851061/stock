@@ -20,6 +20,7 @@ app = Flask(__name__)
 CORS(app)
 
 _DIR = os.path.dirname(os.path.abspath(__file__))
+_HOLDINGS_DIR = os.path.join(_DIR, "holdings")
 
 # ── Taiwan OTC stock codes ─────────────────────────────────────────────────────
 TWO_CODES_988 = {"5274", "6223", "6274"}
@@ -658,8 +659,8 @@ def _apply_holdings_update_988(new_holdings: list):
         PREV_STOCKS_988    = list(CURRENT_STOCKS_988) if CURRENT_STOCKS_988 else list(new_holdings)
         STOCKS_988         = new_holdings
         CURRENT_STOCKS_988 = new_holdings
-        _save_holdings_file(os.path.join(_DIR, "prev_holdings.json"),    PREV_STOCKS_988)
-        _save_holdings_file(os.path.join(_DIR, "current_holdings.json"), STOCKS_988)
+        _save_holdings_file(os.path.join(_HOLDINGS_DIR, "prev_holdings.json"),    PREV_STOCKS_988)
+        _save_holdings_file(os.path.join(_HOLDINGS_DIR, "current_holdings.json"), STOCKS_988)
         print(f"[INFO] 00988A 持股更新 {len(PREV_STOCKS_988)}→{len(STOCKS_988)}")
         _slow_ready.clear()
         threading.Thread(target=_do_slow_refresh, daemon=True).start()
@@ -667,7 +668,7 @@ def _apply_holdings_update_988(new_holdings: list):
         STOCKS_988 = new_holdings
         if not PREV_STOCKS_988 and CURRENT_STOCKS_988:
             PREV_STOCKS_988 = list(CURRENT_STOCKS_988)
-            _save_holdings_file(os.path.join(_DIR, "prev_holdings.json"), PREV_STOCKS_988)
+            _save_holdings_file(os.path.join(_HOLDINGS_DIR, "prev_holdings.json"), PREV_STOCKS_988)
         print(f"[INFO] 00988A 持股未變化（{len(STOCKS_988)} 檔）")
 
 
@@ -679,8 +680,8 @@ def _apply_holdings_update_990(new_holdings: list):
         PREV_STOCKS_990    = list(CURRENT_STOCKS_990) if CURRENT_STOCKS_990 else list(new_holdings)
         STOCKS_990         = new_holdings
         CURRENT_STOCKS_990 = new_holdings
-        _save_holdings_file(os.path.join(_DIR, "prev_holdings_990.json"),    PREV_STOCKS_990)
-        _save_holdings_file(os.path.join(_DIR, "current_holdings_990.json"), STOCKS_990)
+        _save_holdings_file(os.path.join(_HOLDINGS_DIR, "prev_holdings_990.json"),    PREV_STOCKS_990)
+        _save_holdings_file(os.path.join(_HOLDINGS_DIR, "current_holdings_990.json"), STOCKS_990)
         print(f"[INFO] 00990A 持股更新 {len(PREV_STOCKS_990)}→{len(STOCKS_990)}")
         _slow_ready.clear()
         threading.Thread(target=_do_slow_refresh, daemon=True).start()
@@ -688,7 +689,7 @@ def _apply_holdings_update_990(new_holdings: list):
         STOCKS_990 = new_holdings
         if not PREV_STOCKS_990 and CURRENT_STOCKS_990:
             PREV_STOCKS_990 = list(CURRENT_STOCKS_990)
-            _save_holdings_file(os.path.join(_DIR, "prev_holdings_990.json"), PREV_STOCKS_990)
+            _save_holdings_file(os.path.join(_HOLDINGS_DIR, "prev_holdings_990.json"), PREV_STOCKS_990)
         print(f"[INFO] 00990A 持股未變化（{len(STOCKS_990)} 檔）")
 
 
@@ -700,8 +701,8 @@ def _apply_holdings_update_981(new_holdings: list):
         PREV_STOCKS_981    = list(CURRENT_STOCKS_981) if CURRENT_STOCKS_981 else list(new_holdings)
         STOCKS_981         = new_holdings
         CURRENT_STOCKS_981 = new_holdings
-        _save_holdings_file(os.path.join(_DIR, "prev_holdings_981.json"),    PREV_STOCKS_981)
-        _save_holdings_file(os.path.join(_DIR, "current_holdings_981.json"), STOCKS_981)
+        _save_holdings_file(os.path.join(_HOLDINGS_DIR, "prev_holdings_981.json"),    PREV_STOCKS_981)
+        _save_holdings_file(os.path.join(_HOLDINGS_DIR, "current_holdings_981.json"), STOCKS_981)
         print(f"[INFO] 00981A 持股更新 {len(PREV_STOCKS_981)}→{len(STOCKS_981)}")
         _slow_ready.clear()
         threading.Thread(target=_do_slow_refresh, daemon=True).start()
@@ -709,7 +710,7 @@ def _apply_holdings_update_981(new_holdings: list):
         STOCKS_981 = new_holdings
         if not PREV_STOCKS_981 and CURRENT_STOCKS_981:
             PREV_STOCKS_981 = list(CURRENT_STOCKS_981)
-            _save_holdings_file(os.path.join(_DIR, "prev_holdings_981.json"), PREV_STOCKS_981)
+            _save_holdings_file(os.path.join(_HOLDINGS_DIR, "prev_holdings_981.json"), PREV_STOCKS_981)
         print(f"[INFO] 00981A 持股未變化（{len(STOCKS_981)} 檔）")
 
 
@@ -717,8 +718,8 @@ def _apply_holdings_update_981(new_holdings: list):
 # Startup: load holdings
 # ─────────────────────────────────────────────────────────────────────────────
 
-PREV_STOCKS_988    = _load_holdings_file(os.path.join(_DIR, "prev_holdings.json"))
-CURRENT_STOCKS_988 = _load_holdings_file(os.path.join(_DIR, "current_holdings.json"))
+PREV_STOCKS_988    = _load_holdings_file(os.path.join(_HOLDINGS_DIR, "prev_holdings.json"))
+CURRENT_STOCKS_988 = _load_holdings_file(os.path.join(_HOLDINGS_DIR, "current_holdings.json"))
 print(f"[OK] 00988A prev={len(PREV_STOCKS_988)} current={len(CURRENT_STOCKS_988)}")
 
 try:
@@ -729,8 +730,8 @@ except Exception as e:
     STOCKS_988 = CURRENT_STOCKS_988 or PREV_STOCKS_988
     print(f"[INFO] 00988A fallback {len(STOCKS_988)} 檔")
 
-PREV_STOCKS_990    = _load_holdings_file(os.path.join(_DIR, "prev_holdings_990.json"))
-CURRENT_STOCKS_990 = _load_holdings_file(os.path.join(_DIR, "current_holdings_990.json"))
+PREV_STOCKS_990    = _load_holdings_file(os.path.join(_HOLDINGS_DIR, "prev_holdings_990.json"))
+CURRENT_STOCKS_990 = _load_holdings_file(os.path.join(_HOLDINGS_DIR, "current_holdings_990.json"))
 print(f"[OK] 00990A prev={len(PREV_STOCKS_990)} current={len(CURRENT_STOCKS_990)}")
 
 try:
@@ -741,8 +742,8 @@ except Exception as e:
     STOCKS_990 = CURRENT_STOCKS_990 or PREV_STOCKS_990
     print(f"[INFO] 00990A fallback {len(STOCKS_990)} 檔")
 
-PREV_STOCKS_981    = _load_holdings_file(os.path.join(_DIR, "prev_holdings_981.json"))
-CURRENT_STOCKS_981 = _load_holdings_file(os.path.join(_DIR, "current_holdings_981.json"))
+PREV_STOCKS_981    = _load_holdings_file(os.path.join(_HOLDINGS_DIR, "prev_holdings_981.json"))
+CURRENT_STOCKS_981 = _load_holdings_file(os.path.join(_HOLDINGS_DIR, "current_holdings_981.json"))
 print(f"[OK] 00981A prev={len(PREV_STOCKS_981)} current={len(CURRENT_STOCKS_981)}")
 
 try:
