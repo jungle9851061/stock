@@ -589,7 +589,7 @@ def _fast_refresh_loop():
             print(f"[CACHE] 988A:{len(data_988)} 990A:{len(data_990)} 981A:{len(data_981)} 耗時 {_time.monotonic()-t0:.1f}s")
         except Exception as e:
             print(f"[CACHE] refresh 失敗: {e}")
-        _time.sleep(15)
+        _time.sleep(5)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
