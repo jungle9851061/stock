@@ -751,11 +751,45 @@ except Exception as e:
     print(f"[INFO] 00403A fallback {len(STOCKS_403)} 檔")
 
 # ─────────────────────────────────────────────────────────────────────────────
+# Daily holdings refresh（每個交易日 16:40 自動抓取最新成分股）
+# ─────────────────────────────────────────────────────────────────────────────
+
+def _holdings_daily_refresh_loop():
+    TW_TZ    = pytz.timezone("Asia/Taipei")
+    REFRESH_H, REFRESH_M = 16, 40   # 統一投信 16:30 更新，延後 10 分鐘抓取
+    ETFS = [
+        (fetch_etf_holdings_988, _apply_holdings_update_988, "00988A"),
+        (fetch_etf_holdings_990, _apply_holdings_update_990, "00990A"),
+        (fetch_etf_holdings_981, _apply_holdings_update_981, "00981A"),
+        (fetch_etf_holdings_403, _apply_holdings_update_403, "00403A"),
+    ]
+    while True:
+        now    = datetime.now(TW_TZ)
+        target = now.replace(hour=REFRESH_H, minute=REFRESH_M, second=0, microsecond=0)
+        # 若今天的 16:40 已過，或今天是週末，找下一個交易日
+        if now >= target or now.weekday() >= 5:
+            target += timedelta(days=1)
+        while target.weekday() >= 5:   # 跳過週六、週日
+            target += timedelta(days=1)
+        wait_sec = (target - datetime.now(TW_TZ)).total_seconds()
+        print(f"[HOLDINGS] 下次自動更新：{target.strftime('%m/%d %H:%M')}（{wait_sec/3600:.1f}h 後）")
+        _time.sleep(wait_sec)
+        print(f"[HOLDINGS] 開始每日自動更新持股...")
+        for fetch_fn, apply_fn, label in ETFS:
+            try:
+                apply_fn(fetch_fn())
+                print(f"[HOLDINGS] {label} 更新完成")
+            except Exception as e:
+                print(f"[HOLDINGS] {label} 更新失敗: {e}")
+
+
+# ─────────────────────────────────────────────────────────────────────────────
 # Start background threads
 # ─────────────────────────────────────────────────────────────────────────────
 
-threading.Thread(target=_slow_refresh_loop, daemon=True).start()
-threading.Thread(target=_fast_refresh_loop, daemon=True).start()
+threading.Thread(target=_slow_refresh_loop,           daemon=True).start()
+threading.Thread(target=_fast_refresh_loop,           daemon=True).start()
+threading.Thread(target=_holdings_daily_refresh_loop, daemon=True).start()
 
 
 # ─────────────────────────────────────────────────────────────────────────────
