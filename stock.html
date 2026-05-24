@@ -250,6 +250,7 @@
                 <button class="etf-btn active" id="btn-988" onclick="switchEtf('00988A')">00988A</button>
                 <button class="etf-btn"        id="btn-990" onclick="switchEtf('00990A')">00990A</button>
                 <button class="etf-btn"        id="btn-981" onclick="switchEtf('00981A')">00981A</button>
+                <button class="etf-btn"        id="btn-403" onclick="switchEtf('00403A')">00403A</button>
             </div>
             <span class="topbar-time" id="last-update">--</span>
             <div class="theme-dd">
@@ -430,8 +431,9 @@
         '00988A': { name: '00988A 成分股監控', sub: '全球 AI 科技 ETF · 即時追蹤' },
         '00990A': { name: '00990A 成分股監控', sub: '元大全球 AI 晶片 ETF · 即時追蹤' },
         '00981A': { name: '00981A 成分股監控', sub: '統一台股 ETF · 即時追蹤' },
+        '00403A': { name: '00403A 成分股監控', sub: '統一 MSCI 台灣 ETF · 即時追蹤' },
     };
-    const ETF_BTN_MAP = { '00988A': 'btn-988', '00990A': 'btn-990', '00981A': 'btn-981' };
+    const ETF_BTN_MAP = { '00988A': 'btn-988', '00990A': 'btn-990', '00981A': 'btn-981', '00403A': 'btn-403' };
     let currentEtf = localStorage.getItem('etf-current') || '00988A';
 
     function switchEtf(etf) {

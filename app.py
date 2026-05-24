@@ -38,9 +38,14 @@ TWO_CODES_981 = {
     "1815", "3217", "3264", "4966", "5439",
     "6147", "6187", "6510", "8358",
 }
+TWO_CODES_403 = {
+    "5274", "6223", "6274", "5347", "4966", "6147", "8358",  # 與其他 ETF 共用
+    "8299", "3529", "8996", "3081", "3211", "4979", "3105",  # 00403A 特有
+}
 
 SUFFIX_MAP_988 = {"JP": ".T", "KS": ".KS", "KQ": ".KQ", "HK": ".HK", "GY": ".DE", "FP": ".PA"}
 SUFFIX_MAP_990 = {"JP": ".T", "KP": ".KS", "KQ": ".KQ", "HK": ".HK", "GY": ".DE", "GR": ".DE", "FP": ".PA"}
+SUFFIX_MAP_403 = {}  # 00403A 全部為台股，無其他交易所
 
 NON_US_SUFFIXES = (".TW", ".TWO", ".T", ".KS", ".KQ", ".DE", ".PA", ".HK", ".SS", ".SZ")
 
@@ -57,10 +62,15 @@ STOCKS_981: list = []
 PREV_STOCKS_981: list = []
 CURRENT_STOCKS_981: list = []
 
+STOCKS_403: list = []
+PREV_STOCKS_403: list = []
+CURRENT_STOCKS_403: list = []
+
 # ── Result caches ─────────────────────────────────────────────────────────────
 _stocks_cache_988: list = []
 _stocks_cache_990: list = []
 _stocks_cache_981: list = []
+_stocks_cache_403: list = []
 _indices_cache: list = []
 _nav_cache: dict = {}       # {"00988A": {...}, "00990A": {...}, "00981A": {...}}
 
@@ -106,6 +116,11 @@ def convert_ticker_990(raw_code, exchange):
 def convert_ticker_981(raw_code, exchange):
     code = str(raw_code).strip()
     return code + (".TWO" if code in TWO_CODES_981 else ".TW")
+
+
+def convert_ticker_403(raw_code, exchange):
+    code = str(raw_code).strip()
+    return code + (".TWO" if code in TWO_CODES_403 else ".TW")
 
 
 def parse_weight(raw):
@@ -173,6 +188,17 @@ def fetch_etf_holdings_981() -> list:
     resp = requests.get(url, headers=headers, timeout=15)
     resp.raise_for_status()
     return parse_xlsx_bytes(resp.content, converter=convert_ticker_981)
+
+
+def fetch_etf_holdings_403() -> list:
+    url = "https://www.ezmoney.com.tw/ETF/Fund/AssetExcelNPOI?fundCode=63YTW"
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/124.0.0.0 Safari/537.36",
+        "Referer": "https://www.ezmoney.com.tw/ETF/Fund/Info?fundCode=63YTW",
+    }
+    resp = requests.get(url, headers=headers, timeout=15)
+    resp.raise_for_status()
+    return parse_xlsx_bytes(resp.content, converter=convert_ticker_403)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -321,7 +347,7 @@ def _weight_change(tk: str, current_weight_str: str, prev_stocks: list):
 
 def get_all_tickers() -> list:
     seen, result = set(), []
-    for s in STOCKS_988 + STOCKS_990 + STOCKS_981:
+    for s in STOCKS_988 + STOCKS_990 + STOCKS_981 + STOCKS_403:
         if s["id"] not in seen:
             seen.add(s["id"])
             result.append(s["id"])
@@ -556,14 +582,14 @@ def _slow_refresh_loop():
 
 
 def _fast_refresh_loop():
-    global _stocks_cache_988, _stocks_cache_990, _stocks_cache_981
+    global _stocks_cache_988, _stocks_cache_990, _stocks_cache_981, _stocks_cache_403
     _slow_ready.wait(timeout=120)
     while True:
         try:
             t0              = _time.monotonic()
             all_tks         = get_all_tickers()
-            all_ticker_meta = _get_ticker_meta(STOCKS_988 + STOCKS_990 + STOCKS_981)
-            meta_988 = meta_990 = meta_981 = all_ticker_meta
+            all_ticker_meta = _get_ticker_meta(STOCKS_988 + STOCKS_990 + STOCKS_981 + STOCKS_403)
+            meta_988 = meta_990 = meta_981 = meta_403 = all_ticker_meta
 
             quote_map = _batch_quote(all_tks)
 
@@ -577,6 +603,8 @@ def _fast_refresh_loop():
                                          hist_map, quote_map, meta_map, meta_990)
             data_981 = _assemble_results(STOCKS_981, PREV_STOCKS_981,
                                          hist_map, quote_map, meta_map, meta_981)
+            data_403 = _assemble_results(STOCKS_403, PREV_STOCKS_403,
+                                         hist_map, quote_map, meta_map, meta_403)
 
             with _cache_lock:
                 if any(r["price"] > 0 for r in data_988):
@@ -585,8 +613,10 @@ def _fast_refresh_loop():
                     _stocks_cache_990 = data_990
                 if any(r["price"] > 0 for r in data_981):
                     _stocks_cache_981 = data_981
+                if any(r["price"] > 0 for r in data_403):
+                    _stocks_cache_403 = data_403
             _cache_ready.set()
-            print(f"[CACHE] 988A:{len(data_988)} 990A:{len(data_990)} 981A:{len(data_981)} 耗時 {_time.monotonic()-t0:.1f}s")
+            print(f"[CACHE] 988A:{len(data_988)} 990A:{len(data_990)} 981A:{len(data_981)} 403A:{len(data_403)} 耗時 {_time.monotonic()-t0:.1f}s")
         except Exception as e:
             print(f"[CACHE] refresh 失敗: {e}")
         _time.sleep(5)
@@ -627,6 +657,8 @@ _ETF_HOLDINGS_CFG = {
                "prev_holdings_990.json", "current_holdings_990.json"),
     "00981A": ("STOCKS_981", "PREV_STOCKS_981", "CURRENT_STOCKS_981",
                "prev_holdings_981.json", "current_holdings_981.json"),
+    "00403A": ("STOCKS_403", "PREV_STOCKS_403", "CURRENT_STOCKS_403",
+               "prev_holdings_403.json", "current_holdings_403.json"),
 }
 
 
@@ -661,6 +693,9 @@ def _apply_holdings_update_990(new_holdings: list):
 
 def _apply_holdings_update_981(new_holdings: list):
     _apply_holdings_update("00981A", new_holdings)
+
+def _apply_holdings_update_403(new_holdings: list):
+    _apply_holdings_update("00403A", new_holdings)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -702,6 +737,18 @@ except Exception as e:
     print(f"[ERROR] 00981A 啟動載入失敗: {e}")
     STOCKS_981 = CURRENT_STOCKS_981 or PREV_STOCKS_981
     print(f"[INFO] 00981A fallback {len(STOCKS_981)} 檔")
+
+PREV_STOCKS_403    = _load_holdings_file(os.path.join(_HOLDINGS_DIR, "prev_holdings_403.json"))
+CURRENT_STOCKS_403 = _load_holdings_file(os.path.join(_HOLDINGS_DIR, "current_holdings_403.json"))
+print(f"[OK] 00403A prev={len(PREV_STOCKS_403)} current={len(CURRENT_STOCKS_403)}")
+
+try:
+    _new403 = fetch_etf_holdings_403()
+    _apply_holdings_update_403(_new403)
+except Exception as e:
+    print(f"[ERROR] 00403A 啟動載入失敗: {e}")
+    STOCKS_403 = CURRENT_STOCKS_403 or PREV_STOCKS_403
+    print(f"[INFO] 00403A fallback {len(STOCKS_403)} 檔")
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Start background threads
@@ -823,6 +870,8 @@ def get_stocks():
             return jsonify(_stocks_cache_990)
         elif etf == "00981A":
             return jsonify(_stocks_cache_981)
+        elif etf == "00403A":
+            return jsonify(_stocks_cache_403)
         else:
             return jsonify(_stocks_cache_988)
 
@@ -837,6 +886,9 @@ def reload_stocks():
         elif etf == "00981A":
             _apply_holdings_update_981(fetch_etf_holdings_981())
             return jsonify({"status": "ok", "etf": etf, "count": len(STOCKS_981)})
+        elif etf == "00403A":
+            _apply_holdings_update_403(fetch_etf_holdings_403())
+            return jsonify({"status": "ok", "etf": etf, "count": len(STOCKS_403)})
         else:
             _apply_holdings_update_988(fetch_etf_holdings_988())
             return jsonify({"status": "ok", "etf": etf, "count": len(STOCKS_988)})
