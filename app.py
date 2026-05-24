@@ -378,97 +378,58 @@ def _fetch_all_metadata(non_us_tks: list) -> dict:
 _V8_HEADERS = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
 
 
-async def _fetch_v8_price_us_async(session: aiohttp.ClientSession, tk: str) -> tuple:
+async def _fetch_spark_batch_async(session: aiohttp.ClientSession, chunk: list) -> dict:
+    """Spark 批次端點：一次最多 20 個 ticker，range=5d 取得 prev_close"""
     try:
         async with session.get(
-            f"https://query1.finance.yahoo.com/v8/finance/chart/{tk}",
-            params={"interval": "1m", "range": "1d", "includePrePost": "true"},
+            "https://query1.finance.yahoo.com/v8/finance/spark",
+            params={"symbols": ",".join(chunk), "range": "5d", "interval": "1d"},
         ) as r:
-            if r.status == 404:
-                return tk, None
+            if r.status != 200:
+                return {}
             data = await r.json(content_type=None)
-        res = data.get("chart", {}).get("result", [])
-        if not res:
-            return tk, None
-        meta       = res[0].get("meta", {})
-        reg_price  = meta.get("regularMarketPrice")
-        prev_close = meta.get("chartPreviousClose") or meta.get("previousClose")
-        if not reg_price:
-            return tk, None
-        reg_price  = float(reg_price)
-        prev_close = float(prev_close) if prev_close else None
-
-        ms = _get_us_market_state()
-
-        closes_raw = res[0].get("indicators", {}).get("quote", [{}])[0].get("close", [])
-        closes = [float(c) for c in closes_raw if c is not None]
-        last_c = closes[-1] if closes else None
-
-        pre_price = post_price = None
-        if last_c and reg_price > 0 and abs(last_c - reg_price) / reg_price > 0.0001:
-            if ms == "PRE":
-                pre_price = last_c
-            elif ms in ("POST", "CLOSED"):
-                post_price = last_c
-
-        return tk, {
-            "price": reg_price, "prev_close": prev_close,
-            "pre_price": pre_price, "post_price": post_price,
+    except Exception:
+        return {}
+    if not isinstance(data, dict) or "spark" in data:
+        return {}
+    ms_us = _get_us_market_state()
+    out = {}
+    for tk, info in data.items():
+        if not isinstance(info, dict):
+            continue
+        closes = [c for c in (info.get("close") or []) if c is not None]
+        if not closes:
+            continue
+        price      = float(closes[-1])
+        prev_close = float(closes[-2]) if len(closes) >= 2 else None
+        is_us = not any(tk.endswith(s) for s in NON_US_SUFFIXES)
+        ms    = ms_us if is_us else ("REGULAR" if check_market_status(tk) else "CLOSED")
+        out[tk] = {
+            "price":        price,
+            "prev_close":   prev_close,
+            "pre_price":    None,
+            "post_price":   None,
             "market_state": ms,
         }
-    except Exception:
-        return tk, None
-
-
-async def _fetch_v8_nonUS_async(session: aiohttp.ClientSession, tk: str) -> tuple:
-    try:
-        async with session.get(
-            f"https://query1.finance.yahoo.com/v8/finance/chart/{tk}",
-            params={"interval": "1m", "range": "1d"},
-        ) as r:
-            if r.status == 404:
-                return tk, None
-            data = await r.json(content_type=None)
-        res = data.get("chart", {}).get("result", [])
-        if not res:
-            return tk, None
-        meta       = res[0].get("meta", {})
-        reg_price  = meta.get("regularMarketPrice")
-        prev_close = meta.get("chartPreviousClose") or meta.get("previousClose")
-        if not reg_price:
-            return tk, None
-        reg_price  = float(reg_price)
-        prev_close = float(prev_close) if prev_close else None
-        ms = "REGULAR" if check_market_status(tk) else "CLOSED"
-        return tk, {
-            "price": reg_price, "prev_close": prev_close,
-            "pre_price": None, "post_price": None,
-            "market_state": ms,
-        }
-    except Exception:
-        return tk, None
+    return out
 
 
 async def _batch_quote_async(tickers: list) -> dict:
-    us_tks     = [tk for tk in tickers if not any(tk.endswith(s) for s in NON_US_SUFFIXES)]
-    non_us_tks = [tk for tk in tickers if any(tk.endswith(s) for s in NON_US_SUFFIXES)]
-    connector = aiohttp.TCPConnector(limit=20)
-    timeout   = aiohttp.ClientTimeout(total=12)
+    """Spark 批次取得報價：每批 20 個，101 個 ticker 約 6 個並行請求"""
+    chunks    = [tickers[i:i+20] for i in range(0, len(tickers), 20)]
+    connector = aiohttp.TCPConnector(limit=6)
+    timeout   = aiohttp.ClientTimeout(total=20)
     async with aiohttp.ClientSession(headers=_V8_HEADERS, connector=connector, timeout=timeout) as session:
-        tasks = (
-            [_fetch_v8_price_us_async(session, tk) for tk in us_tks] +
-            [_fetch_v8_nonUS_async(session, tk) for tk in non_us_tks]
-        )
+        tasks   = [_fetch_spark_batch_async(session, chunk) for chunk in chunks]
         results = await asyncio.gather(*tasks, return_exceptions=True)
     out = {}
     for item in results:
-        if isinstance(item, tuple) and isinstance(item[1], dict):
-            out[item[0]] = item[1]
+        if isinstance(item, dict):
+            out.update(item)
     return out
 
 
 def _batch_quote(tickers: list) -> dict:
-    """批次取得報價：美股／非美股皆用 v8 chart API，asyncio 單執行緒 non-blocking I/O"""
     if not tickers:
         return {}
     return asyncio.run(_batch_quote_async(tickers))
@@ -628,7 +589,7 @@ def _fast_refresh_loop():
             print(f"[CACHE] 988A:{len(data_988)} 990A:{len(data_990)} 981A:{len(data_981)} 耗時 {_time.monotonic()-t0:.1f}s")
         except Exception as e:
             print(f"[CACHE] refresh 失敗: {e}")
-        _time.sleep(45)
+        _time.sleep(15)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
