@@ -440,18 +440,58 @@ async def _fetch_spark_batch_async(session: aiohttp.ClientSession, chunk: list) 
     return out
 
 
+async def _fetch_us_extended_async(session: aiohttp.ClientSession, us_tks: list) -> dict:
+    """美股盤前/盤後：spark 1 分 K + includePrePost，取 close[-1] 為延伸盤最新價"""
+    out = {}
+    chunks = [us_tks[i:i+20] for i in range(0, len(us_tks), 20)]
+    for chunk in chunks:
+        try:
+            async with session.get(
+                "https://query1.finance.yahoo.com/v8/finance/spark",
+                params={"symbols": ",".join(chunk), "range": "1d",
+                        "interval": "1m", "includePrePost": "true"},
+            ) as r:
+                if r.status != 200:
+                    continue
+                data = await r.json(content_type=None)
+        except Exception:
+            continue
+        if not isinstance(data, dict) or "spark" in data:
+            continue
+        for tk, info in data.items():
+            if not isinstance(info, dict):
+                continue
+            closes = [c for c in (info.get("close") or []) if c is not None]
+            if closes:
+                out[tk] = float(closes[-1])
+    return out
+
+
 async def _batch_quote_async(tickers: list) -> dict:
-    """Spark 批次取得報價：每批 20 個，101 個 ticker 約 6 個並行請求"""
+    """Spark 批次取得報價；美股盤前/盤後額外抓延伸盤價"""
     chunks    = [tickers[i:i+20] for i in range(0, len(tickers), 20)]
     connector = aiohttp.TCPConnector(limit=6)
     timeout   = aiohttp.ClientTimeout(total=20)
     async with aiohttp.ClientSession(headers=_V8_HEADERS, connector=connector, timeout=timeout) as session:
         tasks   = [_fetch_spark_batch_async(session, chunk) for chunk in chunks]
         results = await asyncio.gather(*tasks, return_exceptions=True)
-    out = {}
-    for item in results:
-        if isinstance(item, dict):
-            out.update(item)
+        out = {}
+        for item in results:
+            if isinstance(item, dict):
+                out.update(item)
+
+        # 盤前或盤後：補抓美股延伸盤價
+        us_ms = _get_us_market_state()
+        if us_ms in ("PRE", "POST"):
+            us_tks = [tk for tk in tickers if not any(tk.endswith(s) for s in NON_US_SUFFIXES)]
+            if us_tks:
+                ext_map = await _fetch_us_extended_async(session, us_tks)
+                for tk, ext_price in ext_map.items():
+                    if tk in out:
+                        if us_ms == "PRE":
+                            out[tk]["pre_price"]  = ext_price
+                        else:
+                            out[tk]["post_price"] = ext_price
     return out
 
 
