@@ -3,6 +3,8 @@ from flask import Flask, jsonify, request
 from flask_cors import CORS
 import yfinance as yf
 import requests
+import aiohttp
+import asyncio
 from bs4 import BeautifulSoup
 import pandas as pd
 from datetime import datetime, time as dtime, timedelta
@@ -15,6 +17,12 @@ import os
 import threading
 import time as _time
 import uuid
+
+try:
+    import psutil as _psutil
+    _psutil.Process().nice(_psutil.BELOW_NORMAL_PRIORITY_CLASS)
+except Exception:
+    pass
 
 app = Flask(__name__)
 CORS(app)
@@ -364,18 +372,19 @@ def _fetch_all_metadata(non_us_tks: list) -> dict:
         return dict(ex.map(_fetch_meta, non_us_tks))
 
 
-def _fetch_v8_price_us(tk: str) -> tuple:
-    """美股: v8 chart API → 即時價 + 昨收 + 盤前/盤後價 + 市場狀態（無需 crumb）"""
+_V8_HEADERS = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
+
+
+async def _fetch_v8_price_us_async(session: aiohttp.ClientSession, tk: str) -> tuple:
     try:
-        r = requests.get(
+        async with session.get(
             f"https://query1.finance.yahoo.com/v8/finance/chart/{tk}",
             params={"interval": "1m", "range": "1d", "includePrePost": "true"},
-            headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"},
-            timeout=8,
-        )
-        if r.status_code == 404:
-            return tk, None
-        res = r.json().get("chart", {}).get("result", [])
+        ) as r:
+            if r.status == 404:
+                return tk, None
+            data = await r.json(content_type=None)
+        res = data.get("chart", {}).get("result", [])
         if not res:
             return tk, None
         meta       = res[0].get("meta", {})
@@ -388,7 +397,6 @@ def _fetch_v8_price_us(tk: str) -> tuple:
 
         ms = _get_us_market_state()
 
-        # 從 timeseries 最後一筆取得盤前/盤後價
         closes_raw = res[0].get("indicators", {}).get("quote", [{}])[0].get("close", [])
         closes = [float(c) for c in closes_raw if c is not None]
         last_c = closes[-1] if closes else None
@@ -409,18 +417,16 @@ def _fetch_v8_price_us(tk: str) -> tuple:
         return tk, None
 
 
-def _fetch_v8_nonUS(tk: str) -> tuple:
-    """非美股: v8 chart API → regularMarketPrice（本幣報價，無換算問題，收盤後亦正確）"""
+async def _fetch_v8_nonUS_async(session: aiohttp.ClientSession, tk: str) -> tuple:
     try:
-        r = requests.get(
+        async with session.get(
             f"https://query1.finance.yahoo.com/v8/finance/chart/{tk}",
             params={"interval": "1m", "range": "1d"},
-            headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"},
-            timeout=8,
-        )
-        if r.status_code == 404:
-            return tk, None
-        res = r.json().get("chart", {}).get("result", [])
+        ) as r:
+            if r.status == 404:
+                return tk, None
+            data = await r.json(content_type=None)
+        res = data.get("chart", {}).get("result", [])
         if not res:
             return tk, None
         meta       = res[0].get("meta", {})
@@ -440,29 +446,29 @@ def _fetch_v8_nonUS(tk: str) -> tuple:
         return tk, None
 
 
-def _batch_quote(tickers: list) -> dict:
-    """批次取得報價：美股／非美股皆用 v8 chart API（皆無需 crumb）"""
-    if not tickers:
-        return {}
+async def _batch_quote_async(tickers: list) -> dict:
     us_tks     = [tk for tk in tickers if not any(tk.endswith(s) for s in NON_US_SUFFIXES)]
     non_us_tks = [tk for tk in tickers if any(tk.endswith(s) for s in NON_US_SUFFIXES)]
+    connector = aiohttp.TCPConnector(limit=20)
+    timeout   = aiohttp.ClientTimeout(total=12)
+    async with aiohttp.ClientSession(headers=_V8_HEADERS, connector=connector, timeout=timeout) as session:
+        tasks = (
+            [_fetch_v8_price_us_async(session, tk) for tk in us_tks] +
+            [_fetch_v8_nonUS_async(session, tk) for tk in non_us_tks]
+        )
+        results = await asyncio.gather(*tasks, return_exceptions=True)
+    out = {}
+    for item in results:
+        if isinstance(item, tuple) and isinstance(item[1], dict):
+            out[item[0]] = item[1]
+    return out
 
-    result = {}
-    workers = min(len(tickers), 12)
 
-    if us_tks:
-        with ThreadPoolExecutor(max_workers=min(len(us_tks), workers)) as ex:
-            for tk, info in ex.map(_fetch_v8_price_us, us_tks):
-                if info:
-                    result[tk] = info
-
-    if non_us_tks:
-        with ThreadPoolExecutor(max_workers=min(len(non_us_tks), workers)) as ex:
-            for tk, info in ex.map(_fetch_v8_nonUS, non_us_tks):
-                if info:
-                    result[tk] = info
-
-    return result
+def _batch_quote(tickers: list) -> dict:
+    """批次取得報價：美股／非美股皆用 v8 chart API，asyncio 單執行緒 non-blocking I/O"""
+    if not tickers:
+        return {}
+    return asyncio.run(_batch_quote_async(tickers))
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -1061,4 +1067,4 @@ def get_etf_nav():
 
 
 if __name__ == "__main__":
-    app.run(debug=True, port=5000)
+    app.run(debug=True, use_reloader=False, port=5000)
