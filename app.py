@@ -331,6 +331,19 @@ def _prev_close_from_hist(series: pd.Series, region: str):
     return None
 
 
+def _prev_close_before_date(series: pd.Series, ref_date) -> float | None:
+    """從歷史序列找出 bar date < ref_date 的最後一筆收盤（前一交易日收盤）。"""
+    for i in range(len(series) - 1, -1, -1):
+        try:
+            ts = series.index[i]
+            bar_date = ts.date() if callable(getattr(ts, "date", None)) else pd.Timestamp(ts).date()
+            if bar_date < ref_date:
+                return float(series.iloc[i])
+        except Exception:
+            pass
+    return None
+
+
 def _get_ticker_meta(stocks: list) -> dict:
     market_config = {
         ".TW":  {"flag": "🇹🇼", "region": "TW"},
@@ -405,14 +418,12 @@ def _batch_download_history(tickers: list) -> dict:
 
 
 def _fetch_meta(tk: str) -> tuple:
-    info = {"rmt": None, "tz_name": None, "rmp": None, "rmpc": None}
+    info = {"rmt": None, "tz_name": None, "rmp": None}
     try:
         meta = yf.Ticker(tk).history_metadata
         info["rmt"]     = meta.get("regularMarketTime")
         info["tz_name"] = meta.get("exchangeTimezoneName")
         info["rmp"]     = meta.get("regularMarketPrice")
-        info["rmpc"]    = (meta.get("regularMarketPreviousClose")
-                          or meta.get("chartPreviousClose"))
     except Exception:
         pass
     return tk, info
@@ -584,16 +595,30 @@ def _assemble_results(stocks: list, prev_stocks: list,
                 else:
                     day_change = get_pct_change(cp, 1)
             else:
-                # 已收盤非美股：優先用 metadata 的 regularMarketPrice/PreviousClose
-                # spark 對已收盤市場常回傳舊資料（如日股 6997.T 顯示昨收而非今收）
+                # 已收盤非美股：用 metadata regularMarketPrice 為今收，
+                # 並以 rmt（最後成交時間）為基準從 history 找前一交易日收盤。
+                # chartPreviousClose 是圖表區間起始價（非昨收），不可使用。
                 tmeta = meta_map.get(tk, {})
-                rmp  = tmeta.get("rmp")
-                rmpc = tmeta.get("rmpc")
+                rmp   = tmeta.get("rmp")
                 if region != "US" and rmp and rmp > 0:
                     latest_price = rmp
-                    # rmpc 優先用 metadata；若無則從 history 取前一交易日收盤
-                    if not (rmpc and rmpc > 0):
-                        rmpc = _prev_close_from_hist(cp, region)
+                    rmpc = None
+                    rmt_ts = tmeta.get("rmt")
+                    tz_nm  = tmeta.get("tz_name")
+                    if rmt_ts and tz_nm:
+                        try:
+                            last_date = datetime.fromtimestamp(
+                                rmt_ts, tz=pytz.timezone(tz_nm)).date()
+                            rmpc = _prev_close_before_date(cp, last_date)
+                        except Exception:
+                            pass
+                    if not (rmpc and rmpc > 0) and len(cp) >= 1:
+                        # fallback：price proximity 判斷 history 是否含今日 bar
+                        cp_last = float(cp.iloc[-1])
+                        if len(cp) >= 2 and rmp > 0 and abs(rmp - cp_last) / rmp < 0.005:
+                            rmpc = float(cp.iloc[-2])
+                        else:
+                            rmpc = cp_last
                     if rmpc and rmpc > 0:
                         day_change = (rmp - rmpc) / rmpc * 100
                     elif reg_price and prev_close and prev_close > 0:
