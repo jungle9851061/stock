@@ -310,6 +310,27 @@ def get_pct_change(series, periods):
         return 0.0
 
 
+def _prev_close_from_hist(series: pd.Series, region: str):
+    """從歷史序列找出今日之前最近一個收盤價（即昨日收盤），用本地交易所時間判斷「今日」。"""
+    if len(series) < 1:
+        return None
+    tz_name = {
+        "TW": "Asia/Taipei", "JP": "Asia/Tokyo", "KR": "Asia/Seoul",
+        "DE": "Europe/Berlin", "FR": "Europe/Paris", "HK": "Asia/Hong_Kong",
+        "CN": "Asia/Shanghai",
+    }.get(region, "America/New_York")
+    today = datetime.now(pytz.timezone(tz_name)).date()
+    for i in range(len(series) - 1, -1, -1):
+        try:
+            ts = series.index[i]
+            bar_date = ts.date() if callable(getattr(ts, "date", None)) else pd.Timestamp(ts).date()
+            if bar_date < today:
+                return float(series.iloc[i])
+        except Exception:
+            pass
+    return None
+
+
 def _get_ticker_meta(stocks: list) -> dict:
     market_config = {
         ".TW":  {"flag": "🇹🇼", "region": "TW"},
@@ -548,8 +569,12 @@ def _assemble_results(stocks: list, prev_stocks: list,
             # v8 regularMarketPrice 對所有市場都回傳本地貨幣正確價格，開收盤皆適用
             latest_price = reg_price or cp_last
 
-            # Day change
-            if reg_price and prev_close and prev_close > 0:
+            # Day change: compare reg_price to yesterday's close from history
+            # Use date-based lookup so big-move days (+18% etc.) are never misclassified
+            hist_prev = _prev_close_from_hist(cp, region)
+            if reg_price and reg_price > 0 and hist_prev and hist_prev > 0:
+                day_change = (reg_price - hist_prev) / hist_prev * 100
+            elif reg_price and prev_close and prev_close > 0:
                 day_change = (reg_price - prev_close) / prev_close * 100
             else:
                 day_change = get_pct_change(cp, 1)
