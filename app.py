@@ -405,11 +405,13 @@ def _batch_download_history(tickers: list) -> dict:
 
 
 def _fetch_meta(tk: str) -> tuple:
-    info = {"rmt": None, "tz_name": None}
+    info = {"rmt": None, "tz_name": None, "rmp": None, "rmpc": None}
     try:
         meta = yf.Ticker(tk).history_metadata
         info["rmt"]     = meta.get("regularMarketTime")
         info["tz_name"] = meta.get("exchangeTimezoneName")
+        info["rmp"]     = meta.get("regularMarketPrice")
+        info["rmpc"]    = meta.get("regularMarketPreviousClose")
     except Exception:
         pass
     return tk, info
@@ -581,8 +583,20 @@ def _assemble_results(stocks: list, prev_stocks: list,
                 else:
                     day_change = get_pct_change(cp, 1)
             else:
-                # 已收盤：spark prev_close 可靠，直接用
-                if reg_price and prev_close and prev_close > 0:
+                # 已收盤非美股：優先用 metadata 的 regularMarketPrice/PreviousClose
+                # spark 對已收盤市場常回傳舊資料（如日股 6997.T 顯示昨收而非今收）
+                tmeta = meta_map.get(tk, {})
+                rmp  = tmeta.get("rmp")
+                rmpc = tmeta.get("rmpc")
+                if region != "US" and rmp and rmp > 0:
+                    latest_price = rmp
+                    if rmpc and rmpc > 0:
+                        day_change = (rmp - rmpc) / rmpc * 100
+                    elif reg_price and prev_close and prev_close > 0:
+                        day_change = (reg_price - prev_close) / prev_close * 100
+                    else:
+                        day_change = get_pct_change(cp, 1)
+                elif reg_price and prev_close and prev_close > 0:
                     day_change = (reg_price - prev_close) / prev_close * 100
                 else:
                     day_change = get_pct_change(cp, 1)
