@@ -411,7 +411,8 @@ def _fetch_meta(tk: str) -> tuple:
         info["rmt"]     = meta.get("regularMarketTime")
         info["tz_name"] = meta.get("exchangeTimezoneName")
         info["rmp"]     = meta.get("regularMarketPrice")
-        info["rmpc"]    = meta.get("regularMarketPreviousClose")
+        info["rmpc"]    = (meta.get("regularMarketPreviousClose")
+                          or meta.get("chartPreviousClose"))
     except Exception:
         pass
     return tk, info
@@ -590,6 +591,9 @@ def _assemble_results(stocks: list, prev_stocks: list,
                 rmpc = tmeta.get("rmpc")
                 if region != "US" and rmp and rmp > 0:
                     latest_price = rmp
+                    # rmpc 優先用 metadata；若無則從 history 取前一交易日收盤
+                    if not (rmpc and rmpc > 0):
+                        rmpc = _prev_close_from_hist(cp, region)
                     if rmpc and rmpc > 0:
                         day_change = (rmp - rmpc) / rmpc * 100
                     elif reg_price and prev_close and prev_close > 0:
