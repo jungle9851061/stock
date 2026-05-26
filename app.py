@@ -569,15 +569,23 @@ def _assemble_results(stocks: list, prev_stocks: list,
             # v8 regularMarketPrice 對所有市場都回傳本地貨幣正確價格，開收盤皆適用
             latest_price = reg_price or cp_last
 
-            # Day change: compare reg_price to yesterday's close from history
-            # Use date-based lookup so big-move days (+18% etc.) are never misclassified
-            hist_prev = _prev_close_from_hist(cp, region)
-            if reg_price and reg_price > 0 and hist_prev and hist_prev > 0:
-                day_change = (reg_price - hist_prev) / hist_prev * 100
-            elif reg_price and prev_close and prev_close > 0:
-                day_change = (reg_price - prev_close) / prev_close * 100
+            # Day change
+            if is_open:
+                # 開盤中：spark prev_close 可能含盤後價（如美股財報後跳空），
+                # 改用 history 的日期比對取昨日正式收盤
+                hist_prev = _prev_close_from_hist(cp, region)
+                if hist_prev and hist_prev > 0 and reg_price and reg_price > 0:
+                    day_change = (reg_price - hist_prev) / hist_prev * 100
+                elif reg_price and prev_close and prev_close > 0:
+                    day_change = (reg_price - prev_close) / prev_close * 100
+                else:
+                    day_change = get_pct_change(cp, 1)
             else:
-                day_change = get_pct_change(cp, 1)
+                # 已收盤：spark prev_close 可靠，直接用
+                if reg_price and prev_close and prev_close > 0:
+                    day_change = (reg_price - prev_close) / prev_close * 100
+                else:
+                    day_change = get_pct_change(cp, 1)
 
             # Extended hours (US only)
             ext_price = ext_change = None
