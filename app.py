@@ -17,6 +17,7 @@ import os
 import threading
 import time as _time
 import uuid
+import signal
 
 try:
     import psutil as _psutil
@@ -1237,4 +1238,6 @@ def get_etf_nav():
 
 
 if __name__ == "__main__":
+    signal.signal(signal.SIGINT, lambda *_: os._exit(0))
+    signal.signal(signal.SIGTERM, lambda *_: os._exit(0))
     app.run(debug=True, use_reloader=False, port=5000)

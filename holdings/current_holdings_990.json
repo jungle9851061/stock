@@ -1,182 +1,222 @@
 [
   {
-    "id": "LITE",
-    "name": "Lumentum Holdings Inc",
-    "weight": "5.71%"
+    "id": "MU",
+    "name": "Micron Technology Inc",
+    "weight": "6.29%"
   },
   {
     "id": "SNDK",
     "name": "Sandisk Corp/DE",
-    "weight": "5.54%"
+    "weight": "4.98%"
   },
   {
-    "id": "MU",
-    "name": "Micron Technology Inc",
-    "weight": "5.44%"
-  },
-  {
-    "id": "285A.T",
-    "name": "Kioxia Holdings Corp",
-    "weight": "3.99%"
+    "id": "LITE",
+    "name": "Lumentum Holdings Inc",
+    "weight": "4.66%"
   },
   {
     "id": "2308.TW",
     "name": "台達電",
-    "weight": "3.93%"
-  },
-  {
-    "id": "TSEM",
-    "name": "Tower Semiconductor Ltd",
-    "weight": "3.85%"
-  },
-  {
-    "id": "BE",
-    "name": "Bloom Energy Corp",
-    "weight": "3.71%"
-  },
-  {
-    "id": "2330.TW",
-    "name": "台積電",
-    "weight": "3.65%"
-  },
-  {
-    "id": "AMD",
-    "name": "Advanced Micro Devices Inc",
-    "weight": "3.62%"
+    "weight": "4.29%"
   },
   {
     "id": "009150.KS",
     "name": "Samsung Electro-Mechanics Co Ltd",
-    "weight": "3.27%"
+    "weight": "3.87%"
   },
   {
-    "id": "WDC",
-    "name": "Western Digital Corp",
-    "weight": "2.48%"
+    "id": "285A.T",
+    "name": "Kioxia Holdings Corp",
+    "weight": "3.81%"
   },
   {
-    "id": "5706.T",
-    "name": "Mitsui Kinzoku Co Ltd",
-    "weight": "2.15%"
+    "id": "AMD",
+    "name": "Advanced Micro Devices Inc",
+    "weight": "3.48%"
   },
   {
-    "id": "GLW",
-    "name": "Corning Inc",
-    "weight": "2.11%"
+    "id": "TSEM",
+    "name": "Tower Semiconductor Ltd",
+    "weight": "3.35%"
+  },
+  {
+    "id": "BE",
+    "name": "Bloom Energy Corp",
+    "weight": "3.09%"
   },
   {
     "id": "6787.T",
     "name": "Meiko Electronics Co Ltd",
-    "weight": "2.09%"
+    "weight": "2.40%"
+  },
+  {
+    "id": "2330.TW",
+    "name": "台積電",
+    "weight": "2.39%"
+  },
+  {
+    "id": "WDC",
+    "name": "Western Digital Corp",
+    "weight": "2.36%"
+  },
+  {
+    "id": "5706.T",
+    "name": "Mitsui Kinzoku Co Ltd",
+    "weight": "2.08%"
   },
   {
     "id": "2383.TW",
     "name": "台光電",
-    "weight": "2.08%"
-  },
-  {
-    "id": "AIXA.DE",
-    "name": "AIXA",
-    "weight": "2.06%"
+    "weight": "2.07%"
   },
   {
     "id": "4062.T",
     "name": "Ibiden Co Ltd",
-    "weight": "1.97%"
+    "weight": "1.98%"
   },
   {
-    "id": "NVDA",
-    "name": "NVIDIA Corp",
-    "weight": "1.70%"
+    "id": "AIXA.DE",
+    "name": "AIXA",
+    "weight": "1.96%"
   },
   {
-    "id": "2345.TW",
-    "name": "智邦",
-    "weight": "1.69%"
-  },
-  {
-    "id": "000660.KS",
-    "name": "SK hynix Inc",
-    "weight": "1.59%"
-  },
-  {
-    "id": "AAOI",
-    "name": "Applied Optoelectronics Inc",
-    "weight": "1.50%"
-  },
-  {
-    "id": "STX",
-    "name": "Seagate Technology Holdings PLC",
-    "weight": "1.45%"
-  },
-  {
-    "id": "GOOGL",
-    "name": "Alphabet Inc",
-    "weight": "1.44%"
-  },
-  {
-    "id": "5347.TWO",
-    "name": "世界",
-    "weight": "1.26%"
-  },
-  {
-    "id": "AVGO",
-    "name": "Broadcom Inc",
-    "weight": "1.25%"
-  },
-  {
-    "id": "SMTC",
-    "name": "Semtech Corp",
-    "weight": "1.17%"
-  },
-  {
-    "id": "3653.TW",
-    "name": "健策",
-    "weight": "1.13%"
-  },
-  {
-    "id": "NOK",
-    "name": "Nokia Oyj",
-    "weight": "1.05%"
-  },
-  {
-    "id": "NVTS",
-    "name": "Navitas Semiconductor Corp",
-    "weight": "0.87%"
-  },
-  {
-    "id": "AEHR",
-    "name": "Aehr Test Systems",
-    "weight": "0.76%"
-  },
-  {
-    "id": "2360.TW",
-    "name": "致茂",
-    "weight": "0.72%"
-  },
-  {
-    "id": "STM",
-    "name": "STMicroelectronics NV",
-    "weight": "0.67%"
-  },
-  {
-    "id": "010120.KS",
-    "name": "LS Electric Co Ltd",
-    "weight": "0.61%"
-  },
-  {
-    "id": "6777.T",
-    "name": "Santec Holdings Corp",
-    "weight": "0.60%"
+    "id": "MRVL",
+    "name": "Marvell Technology Inc",
+    "weight": "1.93%"
   },
   {
     "id": "6976.T",
     "name": "Taiyo Yuden Co Ltd",
-    "weight": "0.52%"
+    "weight": "1.88%"
   },
   {
-    "id": "4958.TW",
-    "name": "臻鼎-KY",
-    "weight": "0.50%"
+    "id": "3037.TW",
+    "name": "欣興",
+    "weight": "1.86%"
+  },
+  {
+    "id": "GLW",
+    "name": "Corning Inc",
+    "weight": "1.83%"
+  },
+  {
+    "id": "2454.TW",
+    "name": "聯發科",
+    "weight": "1.67%"
+  },
+  {
+    "id": "000660.KS",
+    "name": "SK hynix Inc",
+    "weight": "1.61%"
+  },
+  {
+    "id": "STX",
+    "name": "Seagate Technology Holdings PLC",
+    "weight": "1.36%"
+  },
+  {
+    "id": "6981.T",
+    "name": "Murata Manufacturing Co Ltd",
+    "weight": "1.31%"
+  },
+  {
+    "id": "5801.T",
+    "name": "Furukawa Electric Co Ltd",
+    "weight": "1.28%"
+  },
+  {
+    "id": "NVTS",
+    "name": "Navitas Semiconductor Corp",
+    "weight": "1.22%"
+  },
+  {
+    "id": "CIEN",
+    "name": "Ciena Corp",
+    "weight": "1.21%"
+  },
+  {
+    "id": "6274.TWO",
+    "name": "台燿",
+    "weight": "1.18%"
+  },
+  {
+    "id": "ARM",
+    "name": "ARM Holdings PLC",
+    "weight": "1.15%"
+  },
+  {
+    "id": "5347.TWO",
+    "name": "世界",
+    "weight": "1.12%"
+  },
+  {
+    "id": "SMTC",
+    "name": "Semtech Corp",
+    "weight": "1.09%"
+  },
+  {
+    "id": "VICR",
+    "name": "Vicor Corp",
+    "weight": "1.01%"
+  },
+  {
+    "id": "2345.TW",
+    "name": "智邦",
+    "weight": "0.99%"
+  },
+  {
+    "id": "STM",
+    "name": "STMicroelectronics NV",
+    "weight": "0.97%"
+  },
+  {
+    "id": "3017.TW",
+    "name": "奇鋐",
+    "weight": "0.95%"
+  },
+  {
+    "id": "DIOD",
+    "name": "Diodes Inc",
+    "weight": "0.88%"
+  },
+  {
+    "id": "NVDA",
+    "name": "NVIDIA Corp",
+    "weight": "0.84%"
+  },
+  {
+    "id": "AEHR",
+    "name": "Aehr Test Systems",
+    "weight": "0.75%"
+  },
+  {
+    "id": "2360.TW",
+    "name": "致茂",
+    "weight": "0.73%"
+  },
+  {
+    "id": "NBIS",
+    "name": "Nebius Group NV",
+    "weight": "0.53%"
+  },
+  {
+    "id": "5274.TWO",
+    "name": "信驊",
+    "weight": "0.49%"
+  },
+  {
+    "id": "AVGO",
+    "name": "Broadcom Inc",
+    "weight": "0.48%"
+  },
+  {
+    "id": "6997.T",
+    "name": "Nippon Chemi-Con Corp",
+    "weight": "0.46%"
+  },
+  {
+    "id": "7826.T",
+    "name": "Furuya Metal Co Ltd",
+    "weight": "0.37%"
   }
 ]
